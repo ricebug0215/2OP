@@ -5,6 +5,7 @@ import json
 
 app = FastAPI()
 
+# 允許前端 React 存取 (CORS 設定)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,7 +22,7 @@ def get_db_connection():
 async def get_cards(
     name: str = "", 
     category: str = "All", 
-    type: str = "All"  # React 前端傳來的 subFilter 都統一放在這裡
+    type: str = "All"
 ):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -37,16 +38,19 @@ async def get_cards(
         query += " AND category = ?"
         params.append(category)
     
-    # --- 關鍵修正：區分寶可夢屬性與訓練家類型的篩選方式 ---
+    # 處理子分類的篩選邏輯
     if type != "All":
         if category == "Pokemon":
-            # 寶可夢的屬性是 JSON 字串（如 '["Grass"]'）
             query += " AND types LIKE ?"
             params.append(f'%"{type}"%')
         elif category == "Trainer":
-            # 訓練家的類型是我們剛才新增的純文字欄位（如 'Item', 'Supporter'）
             query += " AND subCategory = ?"
             params.append(type)
+        elif category == "Energy":
+            if type == "Basic":
+                query += " AND subCategory = 'Basic'"
+            elif type == "Special":
+                query += " AND subCategory = 'Special'"
             
     cursor.execute(query, params)
     rows = cursor.fetchall()
@@ -54,12 +58,18 @@ async def get_cards(
     results = []
     for row in rows:
         card = dict(row)
-        # 解析 JSON 字串
-        if card['types']: card['types'] = json.loads(card['types'])
-        if card['abilities']: card['abilities'] = json.loads(card['abilities'])
-        if card['attacks']: card['attacks'] = json.loads(card['attacks'])
         
-        card['image'] = card['image_url']
+        # 解析 JSON 字串
+        if card.get('types'): card['types'] = json.loads(card['types'])
+        if card.get('abilities'): card['abilities'] = json.loads(card['abilities'])
+        if card.get('attacks'): card['attacks'] = json.loads(card['attacks'])
+        
+        # 將 ACE SPEC 標籤轉為前端好用的 Boolean
+        card['is_ace_spec'] = bool(card.get('is_ace_spec', 0))
+        
+        # 統一圖片欄位名稱
+        card['image'] = card.get('image_url')
+        
         results.append(card)
         
     conn.close()
@@ -67,4 +77,5 @@ async def get_cards(
 
 if __name__ == "__main__":
     import uvicorn
+    # 啟動伺服器，預設運行在 8000 port
     uvicorn.run(app, host="127.0.0.1", port=8000)
