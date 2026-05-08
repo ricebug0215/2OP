@@ -1,32 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, Zap, BookOpen, Play, X } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Zap, BookOpen, X } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://placehold.co/240x336/1e293b/64748b?text=No+Image';
 
 const FILTER_CONFIG = {
   Pokemon: [
     { label: '全部屬性', value: 'All' },
-    { label: '草', value: 'Grass' }, { label: '火', value: 'Fire' },
-    { label: '水', value: 'Water' }, { label: '雷', value: 'Lightning' },
-    { label: '超', value: 'Psychic' }, { label: '鬥', value: 'Fighting' },
-    { label: '惡', value: 'Darkness' }, { label: '鋼', value: 'Metal' },
-    { label: '龍', value: 'Dragon' }, { label: '無', value: 'Colorless' }
+    { label: '草', value: '草' }, { label: '火', value: '火' },
+    { label: '水', value: '水' }, { label: '雷', value: '雷' },
+    { label: '超', value: '超' }, { label: '鬥', value: '鬥' },
+    { label: '惡', value: '惡' }, { label: '鋼', value: '鋼' },
+    { label: '龍', value: '龍' }, { label: '無', value: '無' }
   ],
   Trainer: [
     { label: '全部類型', value: 'All' },
-    { label: '物品', value: 'Item' },
-    { label: '支援者', value: 'Supporter' },
-    { label: '道具', value: 'Tool' },
-    { label: '競技場', value: 'Stadium' }
+    { label: '物品', value: '物品卡' },
+    { label: '支援者', value: '支援者卡' },
+    { label: '道具', value: '寶可夢道具卡' }, 
+    { label: '競技場', value: '競技場卡' }
   ],
   Energy: [
     { label: '全部', value: 'All' },
-    { label: '基本能量', value: 'Basic' },
-    { label: '特殊能量', value: 'Special' }
+    { label: '基本能量', value: '基本能量卡' }, 
+    { label: '特殊能量', value: '特殊能量卡' }
   ]
 };
 
-// 預設常見牌組清單 (範例：多龍巴魯托)
 const PRESET_DECKS = [
   {
     name: "多龍巴魯托 ex",
@@ -50,23 +49,12 @@ const PRESET_DECKS = [
       { name: "莉莉艾的決意", count: 4 },
       { name: "赤松", count: 2 },
       { name: "小剛的發掘", count: 2 },
-      { name: "阿賽蘿拉的惡作劇", count: 1 },
+      { name: "阿塞蘿拉的惡作劇", count: 1 },
       { name: "老大的指令", count: 3 },
       { name: "險惡廢墟", count: 2 },
-      { name: "基本超能量", count: 3 },
-      { name: "基本火能量", count: 3 },
-      { name: "基本惡能量", count: 2 } // 為了測試先填滿 60 張
-    ]
-  },
-  {
-    name: "🔥 噴火龍 ex",
-    cardList: [
-      { name: "惡太晶噴火龍ex", count: 3 },
-      { name: "火恐龍", count: 1 },
-      { name: "小火龍", count: 4 },
-      { name: "神奇糖果", count: 4 },
-      { name: "英雄斗篷", count: 1 },
-      { name: "基本火能量", count: 47 }
+      { name: "基本【超】能量", count: 3 },
+      { name: "基本【火】能量", count: 3 },
+      { name: "基本【惡】能量", count: 2 } 
     ]
   }
 ];
@@ -77,171 +65,135 @@ export default function App() {
   const [filter, setFilter] = useState('All');
   const [subFilter, setSubFilter] = useState('All');
   const [deck, setDeck] = useState([]);
-  
   const [simulationResult, setSimulationResult] = useState(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingCards, setIsLoadingCards] = useState(false);
 
-  useEffect(() => {
-    setSubFilter('All');
-  }, [filter]);
+  // 計算牌組資訊
+  const deckCount = deck.reduce((sum, c) => sum + (c.count || 1), 0);
+  const pokemonCount = deck.filter(c => c.category === 'Pokemon').reduce((sum, c) => sum + c.count, 0);
+  const trainerCount = deck.filter(c => c.category === 'Trainer').reduce((sum, c) => sum + c.count, 0);
+  const energyCount = deck.filter(c => c.category === 'Energy').reduce((sum, c) => sum + c.count, 0);
+
+  useEffect(() => { setSubFilter('All'); }, [filter]);
+  useEffect(() => { setPage(1); }, [searchTerm, filter, subFilter]);
 
   useEffect(() => {
     const fetchCards = async () => {
+      setIsLoadingCards(true);
       try {
-        const url = `http://127.0.0.1:8000/api/cards?name=${searchTerm}&category=${filter}&type=${subFilter}`;
+        const url = `http://127.0.0.1:8000/api/cards?name=${searchTerm}&category=${filter}&type=${subFilter}&page=${page}&limit=48`;
         const response = await fetch(url);
         const data = await response.json();
-        setCards(data);
-      } catch (error) {
-        console.error("無法連線至 API 伺服器:", error);
-      }
+        setCards(data.items);
+        setTotalPages(Math.ceil(data.total / 48) || 1);
+      } catch (error) { console.error("伺服器連線失敗"); }
+      finally { setIsLoadingCards(false); }
     };
     const debounce = setTimeout(fetchCards, 300);
     return () => clearTimeout(debounce);
-  }, [searchTerm, filter, subFilter]);
+  }, [searchTerm, filter, subFilter, page]);
 
-  // 一鍵匯入預設牌組
-  const loadPresetDeck = async (deckIndex) => {
-    if (deck.length > 0) {
-      const confirmOverwrite = window.confirm("匯入新牌組將會清空您目前的牌組，確定要繼續嗎？");
-      if (!confirmOverwrite) return;
-    }
-    
-    setIsSimulating(true); 
-    const selectedList = PRESET_DECKS[deckIndex].cardList;
-    
+  const loadPresetDeck = async (idx) => {
+    if (deck.length > 0 && !window.confirm("確定清空現有牌組？")) return;
+    setIsSimulating(true);
     try {
       const response = await fetch('http://127.0.0.1:8000/api/import-deck', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(selectedList)
+        body: JSON.stringify(PRESET_DECKS[idx].cardList)
       });
-      
-      if (!response.ok) throw new Error("匯入請求失敗");
-      
       const result = await response.json();
-      const fullDeckCards = result.deck; // 拿取牌組
-      const notFoundList = result.notFound; // 拿取找不到的牌
-      
-      // 如果有牌找不到，明確彈出視窗告訴你缺了誰！
-      if (notFoundList.length > 0) {
-        alert(`匯入完成，但以下卡片在資料庫中找不到：\n\n${notFoundList.join(', ')}\n\n請檢查 PRESET_DECKS 中的名稱是否正確。`);
-      }
-      
-      setDeck(fullDeckCards);
-    } catch (error) {
-      console.error("匯入失敗:", error);
-      alert("無法連線到資料庫匯入卡片，請確認 server.py 正在運行。");
-    } finally {
-      setIsSimulating(false);
-    }
+      if (result.notFound.length > 0) alert(`找不到：${result.notFound.join(', ')}`);
+      setDeck(result.deck);
+    } catch (e) { alert("匯入失敗"); }
+    finally { setIsSimulating(false); }
   };
 
   const addToDeck = (card) => {
-    const cardInDeck = deck.find(c => c.id === card.id);
-    const totalCount = deck.reduce((sum, c) => sum + c.count, 0);
-    if (totalCount >= 60) {
-      alert("牌組已滿 60 張！");
-      return;
+    // 👇 關鍵修改 1：改用 name 來尋找卡片
+    const cardInDeck = deck.find(c => c.name === card.name);
+    if (deckCount >= 60) return alert("牌組已滿 60 張！");
+
+    if (card.isAceSpec) {
+      const hasAceSpec = deck.some(c => c.isAceSpec);
+      // 防止同一張 ACE SPEC 點第二次時誤報
+      if (hasAceSpec && !cardInDeck) return alert("ACE SPEC 全牌組只能放一張！"); 
     }
-    if (card.is_ace_spec) {
-      const hasAceSpec = deck.some(c => c.is_ace_spec);
-      if (hasAceSpec) {
-        alert("王牌特種 (ACE SPEC) 全牌組只能放一張！");
-        return;
-      }
+
+    const isBasicEnergy = card.category === 'Energy' && (card.subCategory?.includes('基本') || card.name.includes('基本'));
+    if (!isBasicEnergy && !card.isAceSpec) {
+      if (cardInDeck && cardInDeck.count >= 4) return alert(`「${card.name}」最多只能放 4 張！`);
     }
-    const isBasicEnergy = card.category === 'Energy' && (card.subCategory === 'Basic' || card.name.includes('基本'));
-    if (!isBasicEnergy && !card.is_ace_spec) {
-      if (cardInDeck && cardInDeck.count >= 4) {
-        alert(`「${card.name}」在牌組中最多只能放 4 張！`);
-        return;
-      }
-    }
+    
     if (cardInDeck) {
-      setDeck(deck.map(c => c.id === card.id ? { ...c, count: c.count + 1 } : c));
+      // 👇 關鍵修改 2：改用 name 來增加數量
+      setDeck(deck.map(c => c.name === card.name ? { ...c, count: c.count + 1 } : c));
     } else {
       setDeck([...deck, { ...card, count: 1 }]);
     }
   };
 
-  const removeFromDeck = (cardId) => {
-    const cardInDeck = deck.find(c => c.id === cardId);
+  // 👇 關鍵修改 3：接收 cardName 作為參數
+  const removeFromDeck = (cardName) => {
+    const cardInDeck = deck.find(c => c.name === cardName);
     if (!cardInDeck) return;
     if (cardInDeck.count > 1) {
-      setDeck(deck.map(c => c.id === cardId ? { ...c, count: c.count - 1 } : c));
+      setDeck(deck.map(c => c.name === cardName ? { ...c, count: c.count - 1 } : c));
     } else {
-      setDeck(deck.filter(c => c.id !== cardId));
+      setDeck(deck.filter(c => c.name !== cardName));
     }
   };
 
   const startSimulation = async () => {
-    if (deckCount !== 60) return;
+    if (deckCount !== 60) return alert("請先湊齊 60 張牌！");
     setIsSimulating(true);
-    
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/simulate', {
+      const resp = await fetch('http://127.0.0.1:8000/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(deck)
       });
-      const data = await response.json();
-      setSimulationResult(data);
+      setSimulationResult(await resp.json());
       setShowModal(true);
-    } catch (error) {
-      console.error("模擬失敗:", error);
-      alert("無法連線到伺服器，請確認 server.py 正在運行。");
-    } finally {
-      setIsSimulating(false);
-    }
+    } catch (e) { alert("連線錯誤"); }
+    finally { setIsSimulating(false); }
   };
 
-  const deckCount = deck.reduce((sum, c) => sum + c.count, 0);
-
   return (
-    <div className="flex h-screen w-screen bg-[#020617] text-white font-sans overflow-hidden">
+    <div className="flex h-screen w-screen bg-[#020617] text-white overflow-hidden">
       
-      {/* 左側：卡廊區 */}
-      <div className="flex-1 flex flex-col border-r border-gray-800">
-        <div className="p-6 bg-[#0f172a] shadow-xl space-y-4 z-20">
-          <h1 className="text-2xl font-black flex items-center gap-3 tracking-tight">
-            <Zap className="text-yellow-400 fill-yellow-400" /> PTCG 先二展開器
-          </h1>
-          
+      {/* 左：畫廊 */}
+      <div className="flex-1 flex flex-col border-r border-gray-800 relative">
+        <div className="p-6 bg-[#0f172a] shadow-md z-20">
+          <h1 className="text-2xl font-black flex items-center gap-3 mb-4"><Zap className="text-yellow-400 fill-yellow-400" /> PTCG 展開模擬器</h1>
           <div className="flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-              <input 
-                type="text" 
-                placeholder="搜尋卡片名稱..." 
-                className="w-full bg-[#1e293b] border border-gray-700 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <select 
-              className="bg-[#1e293b] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              <option value="All">全部類別</option>
+            <input 
+              className="flex-1 bg-[#1e293b] border border-gray-700 rounded-xl px-4 py-2" 
+              placeholder="搜尋卡片..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+            <select className="bg-[#1e293b] border border-gray-700 rounded-xl px-4" value={filter} onChange={e => setFilter(e.target.value)}>
+              <option value="All">全部</option>
               <option value="Pokemon">寶可夢</option>
               <option value="Trainer">訓練家</option>
               <option value="Energy">能量</option>
             </select>
           </div>
 
-          {/* 動態子篩選列 */}
-          {FILTER_CONFIG[filter] && (
-            <div className="flex flex-wrap gap-2 pt-2">
+          {FILTER_CONFIG[filter] && filter !== 'All' && (
+            <div className="flex flex-wrap gap-3 pt-4 pb-1 pl-1">
               {FILTER_CONFIG[filter].map((item) => (
                 <button
                   key={item.value}
                   onClick={() => setSubFilter(item.value)}
                   className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
                     subFilter === item.value
-                      ? 'bg-blue-600 border-blue-400 shadow-[0_0_10px_rgba(37,99,235,0.4)]'
+                      ? 'bg-blue-600 border-blue-400 shadow-[0_0_10px_rgba(37,99,235,0.4)] text-white'
                       : 'bg-[#1e293b] border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'
                   }`}
                 >
@@ -252,117 +204,99 @@ export default function App() {
           )}
         </div>
 
-        {/* 卡片網格 */}
-        <div className="flex-1 overflow-y-auto p-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-8 bg-[#020617]">
-          {cards.map(card => (
-            <div 
-              key={card.id} 
-              className={`group relative transition-all duration-300 hover:-translate-y-2 cursor-pointer ${card.is_ace_spec ? 'scale-105 z-10' : ''}`} 
-              onClick={() => addToDeck(card)}
-            >
-              <div className={`relative rounded-2xl overflow-hidden shadow-2xl transition-all ${
-                card.is_ace_spec 
-                  ? 'ring-4 ring-pink-500 shadow-[0_0_20px_rgba(236,72,153,0.6)]' 
-                  : 'ring-1 ring-white/10 group-hover:ring-blue-500/50'
-              }`}>
-                <img 
-                  src={card.image ? card.image.replace('high.webp', 'low.webp') : FALLBACK_IMAGE} 
-                  alt={card.name} 
-                  loading="lazy"
-                  onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_IMAGE; }}
-                  className="w-full h-auto block bg-gray-800 min-h-[200px]" 
-                />
-                <div className="absolute inset-0 bg-blue-600/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-[2px]">
-                  <div className="bg-white text-blue-600 rounded-full p-2"><Plus className="w-8 h-8 stroke-[3px]" /></div>
+        <div className="flex-1 overflow-y-auto p-8 bg-[#020617]">
+          {isLoadingCards ? (
+            <div className="flex justify-center items-center h-full text-blue-500 font-bold text-lg">讀取卡片中...</div>
+          ) : cards.length === 0 ? (
+            <div className="flex justify-center items-center h-full text-gray-500 font-bold text-lg">找不到符合條件的卡片</div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 pb-6">
+              {cards.map(card => (
+                <div key={card.id} className="cursor-pointer hover:-translate-y-1 transition-transform group" onClick={() => addToDeck(card)}>
+                  <div className={`relative rounded-xl overflow-hidden ${card.isAceSpec ? 'ring-2 ring-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.4)]' : ''}`}>
+                    <img src={card.image || FALLBACK_IMAGE} className="w-full h-auto shadow-lg border border-white/10" alt={card.name} />
+                  </div>
+                  <p className={`mt-2 text-xs text-center font-bold ${card.isAceSpec ? 'text-pink-400' : 'text-gray-400'}`}>{card.name}</p>
                 </div>
-              </div>
-              <p className={`mt-3 text-sm font-bold text-center ${card.is_ace_spec ? 'text-pink-400' : 'text-gray-400 group-hover:text-white'}`}>
-                {card.name}
-              </p>
+              ))}
             </div>
-          ))}
+          )}
+        </div>
+
+        <div className="p-4 bg-[#0f172a] border-t border-gray-800 flex justify-center items-center gap-6 shadow-[0_-10px_20px_rgba(0,0,0,0.2)] z-30">
+          <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-6 py-2 bg-[#1e293b] rounded-lg font-bold disabled:opacity-30 hover:bg-blue-600 transition-colors">上一頁</button>
+          <span className="text-gray-400 font-mono font-bold text-lg"><span className="text-white">{page}</span> / {totalPages}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-6 py-2 bg-[#1e293b] rounded-lg font-bold disabled:opacity-30 hover:bg-blue-600 transition-colors">下一頁</button>
         </div>
       </div>
 
-      {/* 右側：牌組清單區 */}
-      <div className="w-96 bg-[#0f172a] flex flex-col shadow-2xl z-30">
+      {/* 右：牌組管理區 */}
+      <div className="w-96 bg-[#0f172a] flex flex-col z-40 shadow-2xl border-l border-gray-800">
         
-        {/* 快速匯入區塊 */}
-        <div className="p-4 border-b border-gray-800 bg-[#1e293b]">
-          <label className="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wider">
-            快速匯入主流牌組
-          </label>
-          <select
-            className="w-full bg-[#0f172a] border border-blue-500/30 rounded-xl px-4 py-2.5 text-sm font-bold text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none transition-all hover:border-blue-500/60"
-            onChange={(e) => {
-              if (e.target.value !== "") {
-                loadPresetDeck(e.target.value);
-                e.target.value = "";
-              }
-            }}
-            defaultValue=""
-          >
-            <option value="" disabled className="text-gray-500">選擇你想測試的牌組...</option>
-            {PRESET_DECKS.map((preset, idx) => (
-              <option key={idx} value={idx} className="text-white">
-                {preset.name}
-              </option>
-            ))}
+        {/* 1. 快速載入 */}
+        <div className="p-4 bg-[#1e293b] border-b border-gray-800">
+          <select className="w-full bg-[#0f172a] rounded-lg p-2 text-blue-400 font-bold" onChange={e => e.target.value && loadPresetDeck(e.target.value)} defaultValue="">
+            <option value="" disabled>快速載入主流牌組...</option>
+            {PRESET_DECKS.map((p, i) => <option key={i} value={i}>{p.name}</option>)}
           </select>
         </div>
 
-        <div className="p-6 border-b border-gray-800">
-          <div className="flex justify-between items-end mb-4">
-            <h2 className="text-xl font-bold">目前牌組</h2>
+        {/* 2. 牌組統計與進度條 */}
+        <div className="p-5 border-b border-gray-800 space-y-4">
+          <div className="flex justify-between items-end">
+            <h2 className="text-xl font-black">目前牌組</h2>
             <span className={`text-sm font-mono font-bold ${deckCount === 60 ? 'text-green-400' : 'text-blue-400'}`}>
               {deckCount} / 60
             </span>
           </div>
-          <div className="w-full bg-gray-800 h-2.5 rounded-full overflow-hidden">
+          <div className="w-full bg-gray-900 h-2 rounded-full overflow-hidden">
             <div className={`h-full transition-all duration-500 ${deckCount === 60 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${(deckCount/60)*100}%` }}></div>
+          </div>
+          <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter text-gray-500">
+            <div className="flex flex-col items-center"><span>Pokemon</span><span className="text-blue-400 text-sm">{pokemonCount}</span></div>
+            <div className="flex flex-col items-center"><span>Trainer</span><span className="text-purple-400 text-sm">{trainerCount}</span></div>
+            <div className="flex flex-col items-center"><span>Energy</span><span className="text-yellow-400 text-sm">{energyCount}</span></div>
           </div>
         </div>
 
+        {/* 3. 牌組清單 (含操作按鈕) */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {deck.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500 opacity-50"><BookOpen className="w-12 h-12 mb-2" /><p>尚未加入卡片</p></div>
+            <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-50 space-y-2">
+              <BookOpen className="w-10 h-10" />
+              <p className="text-sm font-bold">牌組是空的</p>
+            </div>
           ) : (
-            deck.map(card => (
-              <div key={card.id} className="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-white/5 group hover:bg-[#253248] transition-all">
-                <span className={`flex-1 truncate text-sm font-semibold ${card.is_ace_spec ? 'text-pink-400' : 'text-gray-200'}`}>{card.name}</span>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center bg-gray-900/50 p-1 rounded-lg border border-white/5">
-                    <button onClick={() => removeFromDeck(card.id)} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-700"><Minus className="w-3.5 h-3.5" /></button>
-                    <span className="w-8 text-center text-sm font-black text-blue-400">{card.count}</span>
-                    <button onClick={() => addToDeck(card)} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-700"><Plus className="w-3.5 h-3.5" /></button>
+            deck.map(c => (
+              <div key={c.id} className="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-white/5 group transition-all hover:bg-[#253248]">
+                <span className={`text-sm font-bold truncate pr-2 ${c.isAceSpec ? 'text-pink-400' : 'text-gray-200'}`}>{c.name}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-gray-900/50 rounded-lg border border-white/5 p-1">
+                    <button onClick={() => removeFromDeck(c.name)} className="p-1 hover:text-red-400"><Minus className="w-3 h-3" /></button>
+                    <span className="w-6 text-center text-xs font-mono font-bold text-blue-400">{c.count}</span>
+                    <button onClick={() => addToDeck(c)} className="p-1 hover:text-green-400"><Plus className="w-3 h-3" /></button>
                   </div>
-                  <button onClick={() => setDeck(deck.filter(c => c.id !== card.id))} className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setDeck(deck.filter(item => item.name !== c.name))} className="p-1.5 text-gray-600 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))
           )}
         </div>
 
-        <div className="p-6 bg-[#020617] border-t border-gray-800">
-          <button 
-            onClick={startSimulation}
-            disabled={deckCount < 60 || isSimulating}
-            className={`w-full py-4 rounded-2xl font-black text-lg transition-all shadow-lg flex justify-center items-center gap-2 ${
-              deckCount === 60 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02]' : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-            }`}
-          >
-            {isSimulating ? '發牌中...' : '模擬起手與獎賞卡'}
-          </button>
-        </div>
+        <button onClick={startSimulation} disabled={deckCount !== 60 || isSimulating} className="m-6 p-4 bg-blue-600 rounded-xl font-black text-lg hover:bg-blue-500 disabled:bg-gray-800 transition-colors shadow-lg">
+          {isSimulating ? '發牌中...' : '開始模擬起手'}
+        </button>
       </div>
 
-      {/* --- 彈出式對話筐 (Simulation Modal) --- */}
+      {/* 彈出視窗 */}
       {showModal && simulationResult && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
           
-          <div className="relative w-full max-w-5xl bg-[#0f172a] border border-blue-500/30 rounded-[40px] shadow-[0_0_80px_rgba(37,99,235,0.25)] overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-5xl bg-[#0f172a] border border-blue-500/30 rounded-[40px] shadow-[0_0_80px_rgba(37,99,235,0.25)] overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div className="p-8 border-b border-gray-800 flex justify-between items-center bg-[#1e293b]/50">
+            <div className="p-8 border-b border-gray-800 flex justify-between items-center bg-[#1e293b]/50 shrink-0">
               <div>
                 <h2 className="text-4xl font-black text-white flex items-center gap-4">
                   <Zap className="text-yellow-400 fill-yellow-400 w-10 h-10" /> 模擬起手結果
@@ -377,7 +311,7 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-10 flex-1">
+            <div className="p-10 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
                 
                 {/* 左側資訊統計與獎賞卡 */}
@@ -396,9 +330,9 @@ export default function App() {
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {simulationResult.prizes.map((card, idx) => (
-                        <div key={`prize-${card.id}-${idx}`} className="relative rounded-lg overflow-hidden shadow-md ring-1 ring-white/10 group">
+                        <div key={`prize-${idx}`} className="relative rounded-lg overflow-hidden shadow-md ring-1 ring-white/10 group">
                           <img 
-                            src={card.image ? card.image.replace('high.webp', 'low.webp') : FALLBACK_IMAGE} 
+                            src={card.image || FALLBACK_IMAGE} 
                             alt={card.name} 
                             className="w-full h-auto transition-transform duration-300 group-hover:scale-110"
                           />
@@ -420,10 +354,10 @@ export default function App() {
                   
                   <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
                     {simulationResult.hand.map((card, idx) => (
-                      <div key={`${card.id}-${idx}`} className="space-y-2 md:space-y-3 group">
+                      <div key={`hand-${idx}`} className="space-y-2 md:space-y-3 group">
                         <div className="relative rounded-md md:rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 group-hover:ring-blue-500 transition-all">
                           <img 
-                            src={card.image ? card.image.replace('high.webp', 'low.webp') : FALLBACK_IMAGE} 
+                            src={card.image || FALLBACK_IMAGE} 
                             alt={card.name} 
                             className="w-full h-auto"
                           />
@@ -439,7 +373,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="p-8 border-t border-gray-800 bg-[#020617] flex justify-center gap-4">
+            <div className="p-8 border-t border-gray-800 bg-[#020617] flex justify-center gap-4 shrink-0">
               <button 
                 onClick={startSimulation}
                 className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-lg hover:shadow-blue-500/20 active:scale-95"
@@ -457,7 +391,6 @@ export default function App() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

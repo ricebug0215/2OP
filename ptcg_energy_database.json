@@ -1,0 +1,758 @@
+[
+  {
+    "name": "燃料【火】能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018501.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18501/"
+  },
+  {
+    "name": "泡沫【水】能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018502.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18502/"
+  },
+  {
+    "name": "磁鐵【鋼】能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018503.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18503/"
+  },
+  {
+    "name": "基本【草】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018382.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18382/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018383.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18383/"
+  },
+  {
+    "name": "增強【草】能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018055.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18055/"
+  },
+  {
+    "name": "感應【超】能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018056.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18056/"
+  },
+  {
+    "name": "硬岩【鬥】能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018057.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18057/"
+  },
+  {
+    "name": "燃火能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017207.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17207/"
+  },
+  {
+    "name": "扣殺能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017208.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17208/"
+  },
+  {
+    "name": "回力鏢能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017209.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17209/"
+  },
+  {
+    "name": "稜鏡能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017210.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17210/"
+  },
+  {
+    "name": "富裕能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": true,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017211.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17211/"
+  },
+  {
+    "name": "古舊能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": true,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017212.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17212/"
+  },
+  {
+    "name": "火箭隊能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017213.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17213/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017214.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17214/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018326.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18326/"
+  },
+  {
+    "name": "基本【鬥】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017215.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17215/"
+  },
+  {
+    "name": "基本【鬥】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018327.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18327/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017216.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17216/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018328.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18328/"
+  },
+  {
+    "name": "基本【草】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017217.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17217/"
+  },
+  {
+    "name": "基本【草】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018329.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18329/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017218.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17218/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018330.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18330/"
+  },
+  {
+    "name": "基本【鋼】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017219.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17219/"
+  },
+  {
+    "name": "基本【鋼】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018331.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18331/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017220.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17220/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018332.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18332/"
+  },
+  {
+    "name": "基本【水】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00017221.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/17221/"
+  },
+  {
+    "name": "基本【水】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018333.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18333/"
+  },
+  {
+    "name": "燃火能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014851.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14851/"
+  },
+  {
+    "name": "稜鏡能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014852.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14852/"
+  },
+  {
+    "name": "火箭隊能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014853.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14853/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014128.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14128/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014152.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14152/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014428.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14428/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014429.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14429/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014430.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14430/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018518.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18518/"
+  },
+  {
+    "name": "基本【水】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018519.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18519/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "J",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00018520.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/18520/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014435.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14435/"
+  },
+  {
+    "name": "基本【鬥】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014104.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14104/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014433.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14433/"
+  },
+  {
+    "name": "基本【草】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014102.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14102/"
+  },
+  {
+    "name": "基本【鋼】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014434.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14434/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00014103.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/14103/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013185.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13185/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013184.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13184/"
+  },
+  {
+    "name": "稜鏡能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013028.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13028/"
+  },
+  {
+    "name": "稜鏡能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013953.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13953/"
+  },
+  {
+    "name": "燃火能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013114.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13114/"
+  },
+  {
+    "name": "燃火能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013443.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13443/"
+  },
+  {
+    "name": "火箭隊能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012848.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12848/"
+  },
+  {
+    "name": "基本【鋼】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012603.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12603/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012602.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12602/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012626.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12626/"
+  },
+  {
+    "name": "扣殺能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012562.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12562/"
+  },
+  {
+    "name": "扣殺能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012658.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12658/"
+  },
+  {
+    "name": "薄霧能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00011711.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/11711/"
+  },
+  {
+    "name": "薄霧能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012462.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12462/"
+  },
+  {
+    "name": "古舊能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": true,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00011712.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/11712/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012252.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12252/"
+  },
+  {
+    "name": "基本【鬥】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012251.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12251/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012247.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12247/"
+  },
+  {
+    "name": "基本【草】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012246.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12246/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012249.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12249/"
+  },
+  {
+    "name": "基本【鋼】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012253.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12253/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012250.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12250/"
+  },
+  {
+    "name": "基本【水】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00012248.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/12248/"
+  },
+  {
+    "name": "富裕能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": true,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00011094.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/11094/"
+  },
+  {
+    "name": "古舊能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": true,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00010515.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/10515/"
+  },
+  {
+    "name": "回力鏢能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00010313.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/10313/"
+  },
+  {
+    "name": "新衝天能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00009770.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/9770/"
+  },
+  {
+    "name": "薄霧能量",
+    "type": "Energy",
+    "subType": "特殊能量卡",
+    "isAceSpec": false,
+    "regulationMark": "H",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00009912.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/9912/"
+  },
+  {
+    "name": "基本【草】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013128.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13128/"
+  },
+  {
+    "name": "基本【火】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013129.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13129/"
+  },
+  {
+    "name": "基本【水】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013130.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13130/"
+  },
+  {
+    "name": "基本【雷】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013131.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13131/"
+  },
+  {
+    "name": "基本【超】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013132.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13132/"
+  },
+  {
+    "name": "基本【鬥】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013133.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13133/"
+  },
+  {
+    "name": "基本【惡】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013134.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13134/"
+  },
+  {
+    "name": "基本【鋼】能量",
+    "type": "Energy",
+    "subType": "基本能量卡",
+    "isAceSpec": false,
+    "regulationMark": "I",
+    "imageUrl": "https://asia.pokemon-card.com/tw/card-img/tw00013135.png",
+    "sourceUrl": "https://asia.pokemon-card.com/tw/card-search/detail/13135/"
+  }
+]
