@@ -1,86 +1,195 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from game_engine import GameState, parse_deck, Pokemon, Trainer
+from game_engine import GameState, parse_deck, Pokemon, Trainer, Energy
 
 class PTCGEnv(gym.Env):
-    """自定義的 PTCG 強化學習環境"""
-    
     def __init__(self, raw_deck_data):
         super(PTCGEnv, self).__init__()
         self.raw_deck_data = raw_deck_data
-        
-        # 1. 動作空間 (Action Space)：AI 能做什麼？
-        # 假設 AI 每回合最多只有 20 種可能的動作 (例如: 0=結束回合, 1=打出第一張手牌, 2=打出第二張...)
-        self.action_space = spaces.Discrete(20)
-        
-        # 2. 觀察空間 (Observation Space)：AI 能看到什麼？
-        # 為了簡化，我們先讓 AI 看一個長度為 10 的數字陣列：
-        # [手牌數量, 戰鬥區血量, 備戰區怪獸數量, 牌庫剩餘張數, ...]
-        self.observation_space = spaces.Box(low=0, high=300, shape=(10,), dtype=np.float32)
-        
+        self.action_space = spaces.Discrete(21)
+        self.observation_space = spaces.Box(low=0, high=500, shape=(10,), dtype=np.float32)
         self.state = None
-        
+
     def _get_obs(self):
-        """將 GameState 翻譯成 AI 看得懂的數字陣列"""
         obs = np.zeros(10, dtype=np.float32)
         if self.state.active_pokemon:
             obs[0] = len(self.state.hand)
-            obs[1] = int(self.state.active_pokemon.hp)
+            obs[1] = self.state.active_pokemon.hp
             obs[2] = len(self.state.bench)
             obs[3] = len(self.state.deck)
-            # ... 其他位置可以放更多資訊
+            obs[4] = 1 if self.state.energy_attached_this_turn else 0
+            obs[5] = len(self.state.active_pokemon.attached_energies)
+            stage_map = {'Basic': 1, 'Stage1': 2, 'Stage2': 3}
+            obs[6] = stage_map.get(self.state.active_pokemon.stage, 0)
+            obs[7] = 1 if len(self.state.active_pokemon.attacks) > 0 else 0
         return obs
 
     def reset(self, seed=None):
-        """重置環境（開始新的一局）"""
         super().reset(seed=seed)
-        cards = parse_deck(self.raw_deck_data)
-        self.state = GameState(cards)
-        self.state.shuffle_deck()
-        
-        # 簡化版的起手發牌
-        self.state.hand = self.state.deck[:7]
-        self.state.deck = self.state.deck[7:]
-        self.state.setup_active_pokemon()
-        
+        while True:
+            cards = parse_deck(self.raw_deck_data)
+            self.state = GameState(cards)
+            self.state.shuffle_deck()
+            self.state.hand = self.state.deck[:7]
+            self.state.deck = self.state.deck[7:]
+            if self.state.setup_active_pokemon():
+                break
         self.current_step = 0
         return self._get_obs(), {}
 
+    def action_masks(self):
+        """核心關鍵：告訴 AI 哪些動作是合法的"""
+        masks = [False] * 21
+        masks[0] = True # Action 0: 結束回合永遠是合法的
+
+        # 檢查 Action 20: 宣言攻擊 (暫時註解掉，因為第一回合不能攻擊)
+        # if self.state.active_pokemon and len(self.state.active_pokemon.attacks) > 0 and len(self.state.active_pokemon.attached_energies) > 0:
+        #     masks[20] = True
+
+        # 檢查 Action 1~19: 手牌
+        for i, card in enumerate(self.state.hand):
+            if i >= 19: break # 超過動作空間上限的手牌先忽略
+            action_idx = i + 1
+            valid = True
+
+            # --- 判斷這張牌現在能不能打 ---
+            if isinstance(card, Trainer):
+                if card.sub_category == 'Supporter' and self.state.supporter_played_this_turn:
+                    valid = False # 支援者一回合一張
+                elif "高級球" in card.name and len(self.state.hand) < 3:
+                    valid = False # 手牌不夠丟
+                elif "特殊紅牌" in card.name:
+                    valid = False # 假設先二不能用
+                elif card.sub_category == 'Tool' and (not self.state.active_pokemon or self.state.active_pokemon.tool):
+                    valid = False # 沒有戰鬥區或已裝備
+                elif card.sub_category == 'Stadium' and self.state.stadium and self.state.stadium.name == card.name:
+                    valid = False # 同名競技場不可覆蓋
+                elif "好友寶芬" in card.name and len(self.state.bench) >= 5:
+                    valid = False # 備戰區已滿
+
+            elif isinstance(card, Energy):
+                if self.state.energy_attached_this_turn or not self.state.active_pokemon:
+                    valid = False # 能量一回合一次，且要有戰鬥區怪
+
+            elif isinstance(card, Pokemon):
+                if card.stage == 'Basic':
+                    if len(self.state.bench) >= 5:
+                        valid = False # 備戰區滿了不能下手填基礎怪
+                else:
+                    # 檢查進化合法性 (暫時註解掉，第一回合不能進化)
+                    valid_evolution = False
+                    # if self.state.active_pokemon:
+                    #     if card.name == "多龍奇" and self.state.active_pokemon.name == "多龍梅西亞": valid_evolution = True
+                    #     if card.name == "多龍巴魯托ex" and self.state.active_pokemon.name == "多龍奇": valid_evolution = True
+                    #     if "土龍節節" in card.name and self.state.active_pokemon.name == "土龍弟弟": valid_evolution = True
+                    if not valid_evolution:
+                        valid = False
+
+            masks[action_idx] = valid
+
+        return masks
+
     def step(self, action):
-        """AI 執行一個動作，環境回傳結果與分數"""
         reward = 0
         terminated = False
         self.current_step += 1
-        
-        # 解譯 AI 的動作 (action 是一個 0~19 的數字)
+
         if action == 0:
-            # AI 決定結束回合
             terminated = True
-        elif 1 <= action <= len(self.state.hand):
-            # AI 決定打出手牌 (例如 action=1 代表打出 index 0 的牌)
-            card_idx = action - 1
-            card = self.state.hand[card_idx]
-            
-            if isinstance(card, Trainer) and card.sub_category == 'Item':
-                if "好友寶芬" in card.name:
-                    success, _ = self.state.play_item_buddy_poffin()
-                    if success:
-                        self.state.hand.pop(card_idx)
-                        reward += 50 # 獎勵！成功發動關鍵卡
-                    else:
-                        reward -= 10 # 懲罰！發動失敗 (例如備戰滿了)
+        elif action == 20:
+            success, _ = self.state.perform_attack()
+            if success:
+                reward += 300
+                terminated = True
             else:
-                reward -= 5 # 懲罰！打出了目前不能打的牌 (例如第一回合不能下支援者)
+                reward -= 100
+        elif 1 <= action <= len(self.state.hand):
+            card_idx = action - 1
+            card = self.state.hand.pop(card_idx)
+            success = False
+
+            # --- 訓練家卡 ---
+            if isinstance(card, Trainer):
+                if card.sub_category == 'Item':
+                    if "特殊紅牌" in card.name:
+                        # 規則限制：先二對手獎勵卡不可能為 3 張
+                        success = False
+                        reward -= 30 # 嚴厲懲罰打出無法發動的牌
+                    elif "好友寶芬" in card.name: success, _ = self.state.play_item_buddy_poffin()
+                    elif "高級球" in card.name: success, _ = self.state.play_item_ultra_ball()
+                    elif "寶可平板" in card.name or "寶可裝置" in card.name: success, _ = self.state.play_item_pokegear()
+                    elif "夜間擔架" in card.name: success, _ = self.state.play_item_night_stretcher()
+
+                    if success: reward += 30
+
+                elif card.sub_category == 'Tool':
+                    success, _ = self.state.play_tool(card)
+                    if success: reward += 50 # 斗篷很重要，加分
+
+                elif card.sub_category == 'Stadium':
+                    success, _ = self.state.play_stadium(card)
+                    if success:
+                        reward += 30
+                    else:
+                        reward -= 30 # 懲罰亂蓋同名競技場
+
+                elif card.sub_category == 'Supporter':
+                    if self.state.supporter_played_this_turn:
+                        success = False
+                        reward -= 30 # 嚴厲懲罰一回合打兩張支援者
+                    else:
+                        if "赤松" in card.name:
+                            success, _ = self.state.play_supporter_crispin()
+                            if success: reward += 120 # 赤松能解決能量問題，超大獎勵
+                        elif "莉莉艾" in card.name: success, _ = self.state.play_supporter_lillie()
+                        elif "老大" in card.name: success, _ = self.state.play_supporter_boss()
+                        else: success, _ = self.state.play_supporter_generic_draw()
+
+                        if success: reward += 80
+
+            # --- 能量卡 ---
+            elif isinstance(card, Energy):
+                success, _ = self.state.attach_energy_from_hand(card)
+                if success: reward += 50
+
+            # --- 寶可夢卡 ---
+            elif isinstance(card, Pokemon):
+                if card.stage == 'Basic':
+                    # 手動下基礎怪到備戰區
+                    if len(self.state.bench) < 5:
+                        self.state.bench.append(card)
+                        success = True
+                        if "可達鴨" in card.name:
+                            reward -= 50 # 戰略懲罰：不知道對手是誰不准下可達鴨佔位置！
+                        else:
+                            reward += 10
+                else:
+                    success, _ = self.state.evolve_pokemon(card)
+                    if success: reward += 80
+
+            if success:
+                if isinstance(card, Trainer) and card.sub_category != 'Tool' and card.sub_category != 'Stadium':
+                    self.state.discard_pile.append(card)
+            else:
+                self.state.hand.insert(card_idx, card)
+                reward -= 20
         else:
-            reward -= 10 # 懲罰！選擇了無效動作 (例如手牌只有 5 張卻選了打出第 8 張)
-            
-        # 安全機制：最多讓 AI 嘗試 20 步就強制結束，避免死迴圈
-        if self.current_step >= 20:
+            reward -= 50
+
+        if self.current_step >= 30:
             terminated = True
-            
-        # 回合結束的最終結算獎勵
+
         if terminated:
-            reward += len(self.state.bench) * 20 # 備戰區越多怪，分數越高！
-            
+            if self.state.active_pokemon:
+                if self.state.active_pokemon.name == "多龍巴魯托ex": reward += 200
+                elif self.state.active_pokemon.name == "多龍奇": reward += 100
+                if len(self.state.active_pokemon.attached_energies) > 0: reward += 100
+
+            # 結算時若發現場上有可達鴨，再次扣除總分
+            if any("可達鴨" in p.name for p in self.state.bench + ([self.state.active_pokemon] if self.state.active_pokemon else [])):
+                reward -= 50
+
+            reward += len(self.state.bench) * 15
+
         return self._get_obs(), reward, terminated, False, {}
