@@ -114,25 +114,86 @@ class GameState:
         return True, [e.name for e in fetched]
 
     def play_supporter_lillie(self):
-        """支援者：莉莉艾的決意"""
+        """支援者：莉莉艾的決意 (洗回手牌，抽 8 張)"""
         if self.supporter_played_this_turn: return False, ["此回合已用過支援者"]
-        draw_count = max(0, 6 - len(self.hand))
-        if len(self.deck) < draw_count: draw_count = len(self.deck)
-        for _ in range(draw_count): self.hand.append(self.deck.pop(0))
-        self.supporter_played_this_turn = True
-        return True, [f"抽了 {draw_count} 張牌"]
 
-    def play_supporter_generic_draw(self, count=3):
-        """通用支援者(阿賽蘿拉/小剛的發掘等替代功能：抽 3 張)"""
-        if self.supporter_played_this_turn: return False, ["已用過支援者"]
-        draw_count = min(count, len(self.deck))
-        for _ in range(draw_count): self.hand.append(self.deck.pop(0))
+        # 1. 把手牌全部加到牌庫尾端
+        self.deck.extend(self.hand)
+
+        # 2. 直接清空手牌
+        self.hand = []
+
+        # 3. 記得洗牌！
+        self.shuffle_deck()
+
+        # 4. 防呆檢查：確保牌庫夠 8 張牌可以抽
+        draw_count = min(8, len(self.deck))
+        for _ in range(draw_count):
+            self.hand.append(self.deck.pop(0))
+
         self.supporter_played_this_turn = True
-        return True, [f"抽了 {draw_count} 張牌"]
+        return True, [f"洗回手牌並抽了 {draw_count} 張牌"]
+
+    def play_supporter_brock(self):
+        """支援者：小剛的發掘 (從牌庫選擇最多兩張基礎寶可夢，或一張進化寶可夢加入手牌)"""
+        if self.supporter_played_this_turn: return False, ["此回合已用過支援者"]
+
+        pokemons_in_deck = [c for c in self.deck if isinstance(c, Pokemon)]
+        if not pokemons_in_deck:
+            self.supporter_played_this_turn = True
+            self.shuffle_deck()
+            return True, ["牌庫無寶可夢"] # 發動成功但沒找到
+
+        fetched = []
+
+        # 智能邏輯 1：優先找「可以進化場上寶可夢」的進化型 (抓 1 張)
+        field_pokemons = self.bench + ([self.active_pokemon] if self.active_pokemon else [])
+        field_names = [p.name for p in field_pokemons]
+
+        evolution_target = None
+        for p in pokemons_in_deck:
+            if p.stage != 'Basic':
+                # 簡單進化鏈判斷
+                if (p.name == "多龍奇" and "多龍梅西亞" in field_names) or \
+                    (p.name == "多龍巴魯托ex" and "多龍奇" in field_names) or \
+                    ("土龍節節" in p.name and "土龍弟弟" in field_names):
+                    evolution_target = p
+                    break
+
+        if evolution_target:
+            fetched.append(evolution_target)
+            self.deck.remove(evolution_target)
+        else:
+            # 智能邏輯 2：若不需進化，退而求其次抓最多兩張基礎寶可夢
+            basics = [p for p in pokemons_in_deck if p.stage == 'Basic']
+            # 一樣把可達鴨的優先級降到最低
+            basics.sort(key=lambda x: 1 if "可達鴨" in x.name else 0)
+
+            for _ in range(min(2, len(basics))):
+                target = basics.pop(0)
+                fetched.append(target)
+                self.deck.remove(target)
+
+        for c in fetched:
+            self.hand.append(c)
+
+        self.supporter_played_this_turn = True
+        self.shuffle_deck()
+        return True, [c.name for c in fetched]
+
+    def play_supporter_acerola(self):
+        if self.supporter_played_this_turn: return False, ["此回合已用過支援者"]
+        self.supporter_played_this_turn = True
+        return True, ["發動阿塞蘿拉"]
+
+    def play_supporter_empty(self):
+        if self.supporter_played_this_turn: return False, ["此回合已用過支援者"]
+        self.supporter_played_this_turn = True
+        return True, ["空指令"]
 
     def play_supporter_boss(self):
         """支援者：老大的指令"""
-        if self.supporter_played_this_turn: return False, ["已用過支援者"]
+        if self.supporter_played_this_turn: return False, ["此回合已用過支援者"]
         self.supporter_played_this_turn = True
         return True, ["假裝拉出對手備戰"]
 

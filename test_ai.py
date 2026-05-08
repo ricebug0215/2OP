@@ -33,7 +33,7 @@ dragapult_deck = [
 # 2. 建立測試環境
 env = PTCGEnv(dragapult_deck)
 
-# 3. 載入訓練好的模型 (請確保檔名與你 train_ai.py 輸出的名稱相符)
+# 3. 載入訓練好的模型
 model_path = "ptcg_master_dragapult_ai"
 print(f"📥 正在載入模型：{model_path}.zip ...")
 try:
@@ -43,46 +43,64 @@ except FileNotFoundError:
     exit()
 
 # 4. 開始單局測試展示
-print("\n=== 🤖 AI 決策展示賽開始 ===")
+print("\n" + "="*60)
+print("🤖 AI 多龍大師 決策展示賽開始")
+print("="*60)
+
 obs, _ = env.reset()
-
-active_name = env.state.active_pokemon.name if env.state.active_pokemon else "無"
-print(f"🃏 起手戰鬥區：{active_name}")
-print(f"🃏 起手手牌：{[c.name for c in env.state.hand]}")
-
 total_reward = 0
 
 for step in range(30):
+    print(f"\n[回合 {step + 1}] {'-'*45}")
+
+    # --- 1. 取得決策前的真實狀態 ---
+    state = env.state
+    hand_names = [c.name for c in state.hand]
+    print(f"👀 決策前手牌 ({len(hand_names)}張): {hand_names}")
+
+    # --- 2. AI 預測 ---
     action_masks = env.action_masks()
     action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
     action = int(action)
 
-    # 將數字 action 翻譯回人類看得懂的操作
+    # --- 3. 翻譯 Action 為人類可讀文字 ---
     if action == 0:
-        action_str = "宣告結束回合"
+        action_str = "🛑 宣告結束回合"
     elif action == 20:
         action_str = "⚔️ 宣言攻擊！"
-    elif 1 <= action <= len(env.state.hand):
-        action_str = f"嘗試打出卡片：{env.state.hand[action - 1].name}"
+    elif 1 <= action <= len(state.hand):
+        # 這裡使用的是決策前的 state.hand
+        card_to_play = state.hand[action - 1]
+        action_str = f"🃏 嘗試打出卡片：【{card_to_play.name}】"
     else:
-        action_str = f"無效的操作 (嘗試打出第 {action} 張手牌，但手牌不夠)"
+        action_str = f"❌ 嘗試執行無效的操作 (Action index {action})"
 
-    print(f"\n第 {step + 1} 步：AI 選擇動作 -> {action_str}")
+    print(f"👉 AI 選擇動作: {action_str}")
 
-    # 讓環境執行 AI 選擇的動作
+    # --- 4. 讓環境執行 AI 選擇的動作 ---
     obs, reward, terminated, truncated, info = env.step(action)
     total_reward += reward
 
-    # 印出盤面變化
-    bench_names = [c.name for c in env.state.bench]
-    active_name = env.state.active_pokemon.name if env.state.active_pokemon else "無"
-    attached_energy = len(env.state.active_pokemon.attached_energies) if env.state.active_pokemon else 0
+    # --- 5. 印出執行後的詳細盤面 ---
+    active_pkm = env.state.active_pokemon
+    active_str = "無"
+    if active_pkm:
+        energies = [e.name.replace('基本', '').replace('能量', '') for e in active_pkm.attached_energies]
+        tool = active_pkm.tool.name if active_pkm.tool else "無"
+        active_str = f"{active_pkm.name} (HP: {active_pkm.hp}) | 貼附能量: {energies} | 裝備: {tool}"
 
-    print(f"  ├ 戰鬥區: {active_name} (貼附能量: {attached_energy})")
-    print(f"  ├ 備戰區 ({len(bench_names)}/5): {bench_names}")
-    print(f"  ├ 手牌剩餘: {len(env.state.hand)} 張")
-    print(f"  └ 本步獲得分數: {reward}")
+    bench_str = [f"{p.name}" for p in env.state.bench]
+    stadium = env.state.stadium.name if env.state.stadium else "無"
+
+    print(f"  ├ 戰鬥區 : {active_str}")
+    print(f"  ├ 備戰區 ({len(bench_str)}/5): {bench_str}")
+    print(f"  ├ 競技場 : {stadium}")
+    print(f"  ├ 規則限制 : 支援者已用? {'✅' if env.state.supporter_played_this_turn else '❌'} | 手填能量已用? {'✅' if env.state.energy_attached_this_turn else '❌'}")
+    print(f"  ├ 牌庫狀況 : 剩餘 {len(env.state.deck)} 張 | 棄牌區 {len(env.state.discard_pile)} 張")
+    print(f"  └ 💰 本步獲得分數: {reward} (本局累計: {total_reward})")
 
     if terminated:
-        print(f"\n🎉 回合結束！AI 本局總得分：{total_reward}")
+        print("\n" + "="*60)
+        print(f"🎉 回合結束！AI 已經完成展開。本局總得分：{total_reward}")
+        print("="*60)
         break

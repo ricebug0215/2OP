@@ -43,10 +43,6 @@ class PTCGEnv(gym.Env):
         masks = [False] * 21
         masks[0] = True # Action 0: 結束回合永遠是合法的
 
-        # 檢查 Action 20: 宣言攻擊 (暫時註解掉，因為第一回合不能攻擊)
-        # if self.state.active_pokemon and len(self.state.active_pokemon.attacks) > 0 and len(self.state.active_pokemon.attached_energies) > 0:
-        #     masks[20] = True
-
         # 檢查 Action 1~19: 手牌
         for i, card in enumerate(self.state.hand):
             if i >= 19: break # 超過動作空間上限的手牌先忽略
@@ -55,36 +51,62 @@ class PTCGEnv(gym.Env):
 
             # --- 判斷這張牌現在能不能打 ---
             if isinstance(card, Trainer):
+                # 1. 支援者全域限制
                 if card.sub_category == 'Supporter' and self.state.supporter_played_this_turn:
-                    valid = False # 支援者一回合一張
+                    valid = False
+
+                # 2. 個別卡牌條件檢查 (必須與 game_engine.py 的失敗條件完全一致)
                 elif "高級球" in card.name and len(self.state.hand) < 3:
-                    valid = False # 手牌不夠丟
+                    valid = False
                 elif "特殊紅牌" in card.name:
-                    valid = False # 假設先二不能用
+                    valid = False
                 elif card.sub_category == 'Tool' and (not self.state.active_pokemon or self.state.active_pokemon.tool):
-                    valid = False # 沒有戰鬥區或已裝備
+                    valid = False
                 elif card.sub_category == 'Stadium' and self.state.stadium and self.state.stadium.name == card.name:
-                    valid = False # 同名競技場不可覆蓋
-                elif "好友寶芬" in card.name and len(self.state.bench) >= 5:
-                    valid = False # 備戰區已滿
+                    valid = False
+                elif ("寶可平板" in card.name or "寶可裝置" in card.name) and len(self.state.deck) == 0:
+                    valid = False
+
+                # ⚠️ 修正重點：需要檢查牌庫與棄牌區狀態的卡片
+                elif "好友寶芬" in card.name:
+                    if len(self.state.bench) >= 5:
+                        valid = False
+                    else:
+                        # 檢查牌庫裡是否還有合法的檢索對象
+                        eligible_targets = [c for c in self.state.deck if isinstance(c, Pokemon) and c.stage == 'Basic' and c.hp <= 70]
+                        if not eligible_targets:
+                            valid = False
+
+                elif "夜間擔架" in card.name:
+                    # 檢查棄牌區有沒有東西可以撿
+                    eligible = [c for c in self.state.discard_pile if isinstance(c, (Pokemon, Energy))]
+                    if not eligible:
+                        valid = False
+
+                elif "赤松" in card.name and not self.state.supporter_played_this_turn:
+                    # 檢查牌庫是否還有能量
+                    energies = [c for c in self.state.deck if isinstance(c, Energy)]
+                    if not energies:
+                        valid = False
+
+                elif "小剛" in card.name and not self.state.supporter_played_this_turn:
+                    if len(self.state.deck) == 0:
+                        valid = False
+
+                elif "阿塞蘿拉" in card.name:
+                    valid = False
 
             elif isinstance(card, Energy):
                 if self.state.energy_attached_this_turn or not self.state.active_pokemon:
-                    valid = False # 能量一回合一次，且要有戰鬥區怪
+                    valid = False
 
             elif isinstance(card, Pokemon):
                 if card.stage == 'Basic':
                     if len(self.state.bench) >= 5:
-                        valid = False # 備戰區滿了不能下手填基礎怪
-                else:
-                    # 檢查進化合法性 (暫時註解掉，第一回合不能進化)
-                    valid_evolution = False
-                    # if self.state.active_pokemon:
-                    #     if card.name == "多龍奇" and self.state.active_pokemon.name == "多龍梅西亞": valid_evolution = True
-                    #     if card.name == "多龍巴魯托ex" and self.state.active_pokemon.name == "多龍奇": valid_evolution = True
-                    #     if "土龍節節" in card.name and self.state.active_pokemon.name == "土龍弟弟": valid_evolution = True
-                    if not valid_evolution:
                         valid = False
+                else:
+                    # 第一回合不能進化，強制擋下
+                    valid = False
 
             masks[action_idx] = valid
 
@@ -142,9 +164,13 @@ class PTCGEnv(gym.Env):
                         if "赤松" in card.name:
                             success, _ = self.state.play_supporter_crispin()
                             if success: reward += 120 # 赤松能解決能量問題，超大獎勵
+                        elif "小剛" in card.name:
+                            success, _ = self.state.play_supporter_brock()
+                            if success: reward += 100
                         elif "莉莉艾" in card.name: success, _ = self.state.play_supporter_lillie()
                         elif "老大" in card.name: success, _ = self.state.play_supporter_boss()
-                        else: success, _ = self.state.play_supporter_generic_draw()
+                        elif "阿塞蘿拉" in card.name: success, _ = self.state.play_supporter_acerola()
+                        else: success, _ = self.state.play_supporter_empty()
 
                         if success: reward += 80
 
