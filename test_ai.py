@@ -8,10 +8,10 @@ dragapult_deck = [
     {"id": "sv6-3", "name": "多龍梅西亞", "count": 4, "category": "Pokemon", "stage": "Basic", "hp": 70},
     {"id": "sv6-4", "name": "土龍弟弟", "count": 2, "category": "Pokemon", "stage": "Basic", "hp": 70},
     {"id": "sv6-5", "name": "土龍節節", "count": 2, "category": "Pokemon", "stage": "Stage1", "hp": 140},
-    {"id": "sv6-6", "name": "土龍節節ex", "count": 1, "category": "Pokemon", "stage": "Stage1", "hp": 260},
-    {"id": "sv6-7", "name": "願增猿", "count": 2, "category": "Pokemon", "stage": "Basic", "hp": 70},
+    {"id": "sv6-6", "name": "土龍節節ex", "count": 1, "category": "Pokemon", "stage": "Stage1", "hp": 270},
+    {"id": "sv6-7", "name": "願增猿", "count": 2, "category": "Pokemon", "stage": "Basic", "hp": 110},
     {"id": "sv6-8", "name": "含羞苞", "count": 1, "category": "Pokemon", "stage": "Basic", "hp": 30},
-    {"id": "sv6-9", "name": "可達鴨", "count": 1, "category": "Pokemon", "stage": "Basic", "hp": 60},
+    {"id": "sv6-9", "name": "可達鴨", "count": 1, "category": "Pokemon", "stage": "Basic", "hp": 70},
     {"id": "t-1", "name": "寶可平板", "count": 4, "category": "Trainer", "subCategory": "Item"},
     {"id": "t-2", "name": "好友寶芬", "count": 4, "category": "Trainer", "subCategory": "Item"},
     {"id": "t-3", "name": "高級球", "count": 3, "category": "Trainer", "subCategory": "Item"},
@@ -50,12 +50,24 @@ print("="*60)
 obs, _ = env.reset()
 total_reward = 0
 
-for step in range(30):
-    print(f"\n[回合 {step + 1}] {'-'*45}")
+current_game_turn = env.current_turn # 追蹤當前的遊戲回合
+step_in_turn = 1                     # 追蹤「當前回合」的第幾個動作
+
+for global_step in range(30):
+    # --- 檢查是否進入了新回合 ---
+    if env.current_turn > current_game_turn:
+        current_game_turn = env.current_turn
+        step_in_turn = 1 # 換回合時，把回合內的動作步數重置回 1
+
+    print(f"\n[第 {current_game_turn} 回合 | 第 {step_in_turn} 步] (總步數:{global_step+1}) {'-'*30}")
 
     # --- 1. 取得決策前的真實狀態 ---
     state = env.state
     hand_names = [c.name for c in state.hand]
+    
+    if current_game_turn == 1 and step_in_turn == 1:
+        print("⚠️ [規則限制] 先攻第一回合，不可使用支援者卡且不可攻擊！")
+
     print(f"👀 決策前手牌 ({len(hand_names)}張): {hand_names}")
 
     # --- 2. AI 預測 ---
@@ -69,7 +81,6 @@ for step in range(30):
     elif action == 20:
         action_str = "⚔️ 宣言攻擊！"
     elif 1 <= action <= len(state.hand):
-        # 這裡使用的是決策前的 state.hand
         card_to_play = state.hand[action - 1]
         action_str = f"🃏 嘗試打出卡片：【{card_to_play.name}】"
     else:
@@ -80,6 +91,7 @@ for step in range(30):
     # --- 4. 讓環境執行 AI 選擇的動作 ---
     obs, reward, terminated, truncated, info = env.step(action)
     total_reward += reward
+    step_in_turn += 1 # 執行完動作後，回合內步數 +1
 
     # --- 5. 印出執行後的詳細盤面 ---
     active_pkm = env.state.active_pokemon
@@ -95,12 +107,12 @@ for step in range(30):
     print(f"  ├ 戰鬥區 : {active_str}")
     print(f"  ├ 備戰區 ({len(bench_str)}/5): {bench_str}")
     print(f"  ├ 競技場 : {stadium}")
-    print(f"  ├ 規則限制 : 支援者已用? {'✅' if env.state.supporter_played_this_turn else '❌'} | 手填能量已用? {'✅' if env.state.energy_attached_this_turn else '❌'}")
-    print(f"  ├ 牌庫狀況 : 剩餘 {len(env.state.deck)} 張 | 棄牌區 {len(env.state.discard_pile)} 張")
+    print(f"  ├ 規則限制 : 支援者已用? {'✅' if env.state.supporter_played_this_turn else '❌'} | 手填已用? {'✅' if env.state.energy_attached_this_turn else '❌'}")
+    print(f"  ├ 牌庫狀況 : 剩餘 {len(env.state.deck)} 張 | 棄牌區 {len(env.state.discard_pile)} 張 | 獎勵卡 {len(env.state.prizes)} 張")
     print(f"  └ 💰 本步獲得分數: {reward} (本局累計: {total_reward})")
 
     if terminated:
         print("\n" + "="*60)
-        print(f"🎉 回合結束！AI 已經完成展開。本局總得分：{total_reward}")
+        print(f"🎉 遊戲結束！AI 總共執行了 {global_step+1} 個動作，結束在第 {current_game_turn} 回合。本局總得分：{total_reward}")
         print("="*60)
         break

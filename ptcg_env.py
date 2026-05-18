@@ -10,6 +10,7 @@ class PTCGEnv(gym.Env):
         self.action_space = spaces.Discrete(21)
         self.observation_space = spaces.Box(low=0, high=500, shape=(10,), dtype=np.float32)
         self.state = None
+        self.current_turn = 1 # 初始化回合數
 
     def _get_obs(self):
         obs = np.zeros(10, dtype=np.float32)
@@ -31,17 +32,38 @@ class PTCGEnv(gym.Env):
             cards = parse_deck(self.raw_deck_data)
             self.state = GameState(cards)
             self.state.shuffle_deck()
+            
+            # 1. 抽 7 張起手牌
             self.state.hand = self.state.deck[:7]
             self.state.deck = self.state.deck[7:]
+            
+            # 2. 確認手牌有基礎寶可夢並設定好戰鬥區/備戰區
             if self.state.setup_active_pokemon():
                 break
+                
+        # 🌟 3. 新增：從牌庫頂抽出 6 張作為獎勵卡 (必須在確認起手沒問題後才放)
+        self.state.prizes = self.state.deck[:6]
+        self.state.deck = self.state.deck[6:]
+        
         self.current_step = 0
+        self.current_turn = 1 
+        
+        # 4. 遊戲正式開始：先攻第一回合，抽一張牌！
+        self.state.draw_card(1)
+        
         return self._get_obs(), {}
 
     def action_masks(self):
         """核心關鍵：告訴 AI 哪些動作是合法的"""
         masks = [False] * 21
         masks[0] = True # Action 0: 結束回合永遠是合法的
+
+        # 🌟 新增：Action 20 攻擊的遮罩判斷
+        if self.current_turn == 1:
+            masks[20] = False # PTCG 規則：先攻第一回合不可攻擊
+        else:
+            if self.state.active_pokemon:
+                masks[20] = True # 有戰鬥寶可夢時才可宣告攻擊（可依據能量進一步限制）
 
         # 檢查 Action 1~19: 手牌
         for i, card in enumerate(self.state.hand):
@@ -51,9 +73,12 @@ class PTCGEnv(gym.Env):
 
             # --- 判斷這張牌現在能不能打 ---
             if isinstance(card, Trainer):
-                # 1. 支援者全域限制
-                if card.sub_category == 'Supporter' and self.state.supporter_played_this_turn:
-                    valid = False
+                # 🌟 1. 支援者全域限制 (加入第一回合限制)
+                if card.sub_category == 'Supporter':
+                    if self.current_turn == 1:
+                        valid = False # 先攻第一回合不能開支援者
+                    elif self.state.supporter_played_this_turn:
+                        valid = False # 一回合限用一張支援者
 
                 # 2. 個別卡牌條件檢查 (必須與 game_engine.py 的失敗條件完全一致)
                 elif "高級球" in card.name and len(self.state.hand) < 3:
@@ -64,27 +89,34 @@ class PTCGEnv(gym.Env):
                     valid = False
                 elif card.sub_category == 'Stadium' and self.state.stadium and self.state.stadium.name == card.name:
                     valid = False
-                elif ("寶可平板" in card.name or "寶可裝置" in card.name) and len(self.state.deck) == 0:
-                    valid = False
+                elif "寶可裝置" in card.name:
+                    if len(self.state.deck) == 0:
+                        valid = False
+                        
+                elif "寶可平板" in card.name:
+                    if len(self.state.deck) == 0:
+                        valid = False
+                    else:
+                        # 檢查牌庫裡是否有「非規則寶可夢」 (名稱不包含 'ex')
+                        eligible_targets = [c for c in self.state.deck if isinstance(c, Pokemon) and "ex" not in c.name]
+                        if not eligible_targets:
+                            valid = False # 牌庫沒有目標就禁止 AI 打出，避免浪費動作
 
-                # ⚠️ 修正重點：需要檢查牌庫與棄牌區狀態的卡片
+                # ⚠️ 需要檢查牌庫與棄牌區狀態的卡片
                 elif "好友寶芬" in card.name:
                     if len(self.state.bench) >= 5:
                         valid = False
                     else:
-                        # 檢查牌庫裡是否還有合法的檢索對象
                         eligible_targets = [c for c in self.state.deck if isinstance(c, Pokemon) and c.stage == 'Basic' and c.hp <= 70]
                         if not eligible_targets:
                             valid = False
 
                 elif "夜間擔架" in card.name:
-                    # 檢查棄牌區有沒有東西可以撿
                     eligible = [c for c in self.state.discard_pile if isinstance(c, (Pokemon, Energy))]
                     if not eligible:
                         valid = False
 
                 elif "赤松" in card.name and not self.state.supporter_played_this_turn:
-                    # 檢查牌庫是否還有能量
                     energies = [c for c in self.state.deck if isinstance(c, Energy)]
                     if not energies:
                         valid = False
@@ -105,8 +137,7 @@ class PTCGEnv(gym.Env):
                     if len(self.state.bench) >= 5:
                         valid = False
                 else:
-                    # 第一回合不能進化，強制擋下
-                    valid = False
+                    valid = False # PTCG 規則：第一回合（或剛下場）不能進化
 
             masks[action_idx] = valid
 
@@ -118,7 +149,27 @@ class PTCGEnv(gym.Env):
         self.current_step += 1
 
         if action == 0:
-            terminated = True
+            # 🌟 宣告結束回合，回合數 +1
+            self.current_turn += 1
+            
+            # 🌟 新增：限定只能走兩回合 (當準備進入第 3 回合時強制結束)
+            if self.current_turn > 2:
+                terminated = True
+            else:
+                # 只有在還沒超過兩回合時，才進行換回合的重置與抽牌
+                self.state.supporter_played_this_turn = False
+                self.state.energy_attached_this_turn = False
+                
+                # 🌟 新回合開始：抽一張牌
+                success, _ = self.state.draw_card(1)
+                
+                if not success:
+                    # 如果抽不出牌 (牌庫抽乾了)，遊戲強制結束
+                    terminated = True
+                    reward -= 200 
+                else:
+                    reward += 10
+            
         elif action == 20:
             success, _ = self.state.perform_attack()
             if success:
@@ -135,35 +186,38 @@ class PTCGEnv(gym.Env):
             if isinstance(card, Trainer):
                 if card.sub_category == 'Item':
                     if "特殊紅牌" in card.name:
-                        # 規則限制：先二對手獎勵卡不可能為 3 張
                         success = False
-                        reward -= 30 # 嚴厲懲罰打出無法發動的牌
+                        reward -= 30 
                     elif "好友寶芬" in card.name: success, _ = self.state.play_item_buddy_poffin()
                     elif "高級球" in card.name: success, _ = self.state.play_item_ultra_ball()
-                    elif "寶可平板" in card.name or "寶可裝置" in card.name: success, _ = self.state.play_item_pokegear()
+                    elif "寶可平板" in card.name: 
+                        success, _ = self.state.play_item_poke_tablet() # 呼叫專屬的新函數
+                    elif "寶可裝置" in card.name: 
+                        success, _ = self.state.play_item_pokegear()
                     elif "夜間擔架" in card.name: success, _ = self.state.play_item_night_stretcher()
 
                     if success: reward += 30
 
                 elif card.sub_category == 'Tool':
                     success, _ = self.state.play_tool(card)
-                    if success: reward += 50 # 斗篷很重要，加分
+                    if success: reward += 50 
 
                 elif card.sub_category == 'Stadium':
                     success, _ = self.state.play_stadium(card)
                     if success:
                         reward += 30
                     else:
-                        reward -= 30 # 懲罰亂蓋同名競技場
+                        reward -= 30 
 
                 elif card.sub_category == 'Supporter':
-                    if self.state.supporter_played_this_turn:
+                    # 🌟 雙重檢查：防止 AI 在面具失效時意外打出
+                    if self.current_turn == 1 or self.state.supporter_played_this_turn:
                         success = False
-                        reward -= 30 # 嚴厲懲罰一回合打兩張支援者
+                        reward -= 100 # 嚴厲懲罰違規使用支援者
                     else:
                         if "赤松" in card.name:
                             success, _ = self.state.play_supporter_crispin()
-                            if success: reward += 120 # 赤松能解決能量問題，超大獎勵
+                            if success: reward += 120 
                         elif "小剛" in card.name:
                             success, _ = self.state.play_supporter_brock()
                             if success: reward += 100
@@ -182,12 +236,11 @@ class PTCGEnv(gym.Env):
             # --- 寶可夢卡 ---
             elif isinstance(card, Pokemon):
                 if card.stage == 'Basic':
-                    # 手動下基礎怪到備戰區
                     if len(self.state.bench) < 5:
                         self.state.bench.append(card)
                         success = True
                         if "可達鴨" in card.name:
-                            reward -= 50 # 戰略懲罰：不知道對手是誰不准下可達鴨佔位置！
+                            reward -= 50 
                         else:
                             reward += 10
                 else:
@@ -212,7 +265,6 @@ class PTCGEnv(gym.Env):
                 elif self.state.active_pokemon.name == "多龍奇": reward += 100
                 if len(self.state.active_pokemon.attached_energies) > 0: reward += 100
 
-            # 結算時若發現場上有可達鴨，再次扣除總分
             if any("可達鴨" in p.name for p in self.state.bench + ([self.state.active_pokemon] if self.state.active_pokemon else [])):
                 reward -= 50
 

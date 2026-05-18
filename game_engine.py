@@ -21,7 +21,7 @@ class Pokemon(Card):
         self.attached_energies = []
         self.evolved_from = None
         self.damage_counters = 0
-        self.tool = None # 新增：掛載道具裝備
+        self.tool = None # 掛載道具裝備
 
         self.attacks = kwargs.get('attacks', [])
         self.abilities = kwargs.get('abilities', [])
@@ -49,7 +49,7 @@ class GameState:
         self.prizes = []
         self.discard_pile = []
 
-        self.stadium = None # 新增：當前場上的競技場
+        self.stadium = None # 當前場上的競技場
         self.energy_attached_this_turn = False
         self.supporter_played_this_turn = False
 
@@ -78,6 +78,20 @@ class GameState:
                 self.bench.append(p)
                 self.hand.remove(p)
         return True
+
+    def draw_card(self, count=1):
+        """從牌庫抽牌加入手牌 (處理回合開始抽牌、或是卡片效果抽牌)"""
+        if len(self.deck) == 0:
+            return False, ["牌庫已空，無法抽牌"] # 觸發 PTCG 的牌庫抽乾敗北條件
+            
+        drawn_names = []
+        for _ in range(count):
+            if len(self.deck) > 0:
+                card = self.deck.pop(0)
+                self.hand.append(card)
+                drawn_names.append(card.name)
+                
+        return True, drawn_names
 
     # ==========================================
     # 支援者邏輯
@@ -287,6 +301,23 @@ class GameState:
         self.shuffle_deck()
         return True, found
 
+    def play_item_poke_tablet(self):
+        """物品：寶可平板 (從牌庫選擇一張非規則寶可夢加入手牌)"""
+        if len(self.deck) == 0:
+            return False, ["牌庫沒有牌可供搜尋"]
+            
+        # 尋找第一張符合條件的非規則寶可夢 (名稱不含 'ex')
+        for i, card in enumerate(self.deck):
+            if isinstance(card, Pokemon) and "ex" not in card.name:
+                target_card = self.deck.pop(i)
+                self.hand.append(target_card)
+                self.shuffle_deck() # 抓完牌必須洗牌
+                return True, [f"成功使用寶可平板，加入 {target_card.name}"]
+                
+        # 如果看遍了牌庫都沒找到
+        self.shuffle_deck()
+        return False, ["牌庫中沒有非規則寶可夢"]
+
     def attach_energy_from_hand(self, card):
         if self.energy_attached_this_turn: return False, ["一回合只能手填一次"]
         if not self.active_pokemon: return False, ["沒有戰鬥區寶可夢"]
@@ -312,11 +343,9 @@ class GameState:
         return False, ["無法進化"]
 
     def perform_attack(self):
-        """新增：判斷戰鬥區寶可夢是否具備發動招式的條件"""
+        """判斷戰鬥區寶可夢是否具備發動招式的條件"""
         if not self.active_pokemon: return False, ["沒有戰鬥區寶可夢"]
 
-        # 由於 JSON 有提供 attacks 參數，我們檢查能量是否足夠 (簡化版：只要有能量就當作能攻擊)
-        # 未來可以進階比對 attacks[0]['cost'] 與 attached_energies 的屬性
         if self.active_pokemon.attacks and len(self.active_pokemon.attached_energies) > 0:
             attack_name = self.active_pokemon.attacks[0].get('name', '招式')
             return True, [f"使用招式：{attack_name}"]
@@ -324,13 +353,12 @@ class GameState:
         return False, ["能量不足或無法攻擊"]
 
     def simulate_turn_one(self):
-        # 保持原本供前端呈現的簡單邏輯
         action_log = []
         self.setup_active_pokemon()
         if self.active_pokemon: action_log.append(f"開局推上前台: {self.active_pokemon.name}")
         return action_log
 
-# --- JSON 解析器 (全面升級) ---
+# --- JSON 解析器 ---
 def parse_deck(raw_deck_data):
     parsed_cards = []
     for item in raw_deck_data:
@@ -339,7 +367,6 @@ def parse_deck(raw_deck_data):
             unique_id = f"{item.get('id', 'unknown')}-{i}"
             cat = item.get('category', '')
 
-            # 過濾掉基本屬性，剩下的全部打包成 kwargs 傳給物件
             basic_keys = ['id', 'name', 'category', 'count', 'stage', 'hp', 'types', 'is_ace_spec', 'subCategory']
             kwargs = {k: v for k, v in item.items() if k not in basic_keys}
 
