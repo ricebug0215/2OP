@@ -74,8 +74,8 @@ function getTier(score, tiers) {
   if (tiers) {
     if (score >= tiers.p95) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };
     if (score >= tiers.p75) return { label: '優良', color: 'text-green-400', bg: 'bg-green-500/15 border-green-500/40' };
-    if (score >= tiers.p50) return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
-    if (score >= tiers.p25) return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
+    if (score >= tiers.p40) return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
+    if (score >= tiers.p5) return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
     return { label: '天崩', color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/40' };
   }
   if (score >= 160) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };

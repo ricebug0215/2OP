@@ -157,7 +157,7 @@ DEFAULT_PLAYBOOK = {
 
 TIER_CACHE: dict[str, dict] = {}
 
-def _compute_tiers(runner, n=200):
+def _compute_tiers(runner, n=500):
     scores = []
     for _ in range(n):
         r = runner.run_once(turns=2, going_first=True)
@@ -167,8 +167,8 @@ def _compute_tiers(runner, n=200):
     return {
         'p95': scores[int(total * 0.95)],
         'p75': scores[int(total * 0.75)],
-        'p50': scores[int(total * 0.50)],
-        'p25': scores[int(total * 0.25)],
+        'p40': scores[int(total * 0.40)],
+        'p5': scores[int(total * 0.05)],
     }
 
 @app.post("/api/simulate-t2")
@@ -181,7 +181,8 @@ async def simulate_t2(request: Request):
 
     deck_key = ",".join(sorted(f"{d['name']}:{d['count']}" for d in deck_list))
     if deck_key not in TIER_CACHE:
-        TIER_CACHE[deck_key] = _compute_tiers(runner, n=200)
+        TIER_CACHE[deck_key] = _compute_tiers(runner)
+        print(f"Debug: computed tiers for deck: {deck_key} -> {TIER_CACHE[deck_key]}")
     tiers = TIER_CACHE[deck_key]
 
     result = runner.run_once(turns=2, going_first=True)

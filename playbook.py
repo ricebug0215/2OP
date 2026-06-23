@@ -396,7 +396,7 @@ class SimulationRunner:
 
         return {
             'board': state.summary(),
-            'score': evaluate_board(state),
+            'score': evaluate_board(state, self.playbook),
             'log': log,
         }
 
@@ -427,27 +427,49 @@ class SimulationRunner:
 #  場面評估
 # ═══════════════════════════════════════
 
-def evaluate_board(state: GameState) -> float:
-    """評估 T2 結束時的場面品質。分數越高越好。
-    這個函數需要根據牌組目標客製化，這裡是通用版本。
-    """
+def evaluate_board(state: GameState, playbook: dict | None = None) -> float:
+    pb = playbook or {}
+    core_pokemon = set(pb.get('bench_priority', []))
+    energy_targets = set(pb.get('energy_target', []))
+    evo_lines = pb.get('evolution_lines', {})
     score = 0.0
 
-    score += len(state.bench) * 15
+    # ── 場面基礎 ──
+    score += len(state.bench) * 10
+    all_evo_names = set()
+    for evos in evo_lines.values():
+        all_evo_names.update(evos)
+    for slot in state.all_in_play:
+        if slot.name in core_pokemon or slot.base.name in core_pokemon:
+            score += 20
+        elif slot.name in all_evo_names:
+            score += 20
 
+    # ── 進化 ──
     for slot in state.all_in_play:
         if slot.stage == '1階進化':
-            score += 10
+            score += 15
         elif slot.stage == '2階進化':
-            score += 25
-        score += len(slot.attached_energy) * 10
+            score += 40
 
-    if state.active and state.active.stage != '基礎':
-        score += 15
+    # ── 能量 ──
+    for slot in state.all_in_play:
+        for _ in slot.attached_energy:
+            score += 8
+        if slot.base.name in energy_targets or slot.name in energy_targets:
+            score += len(slot.attached_energy) * 5
 
-    score += min(len(state.hand), 6) * 2
+    # ── 資源轉化 ──
+    field_score = score
+    hand_size = len(state.hand)
+    if hand_size > 8:
+        score -= (hand_size - 8) * 3
+    if hand_size < 3 and field_score > 50:
+        score += 5
 
-    score -= max(0, len(state.hand) - 8) * 3
+    deck_size = len(state.deck)
+    if deck_size < 10:
+        score -= (10 - deck_size) * 2
 
     return score
 
