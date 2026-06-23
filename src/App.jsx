@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, Zap, BookOpen, X } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Zap, BookOpen, X, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://placehold.co/240x336/1e293b/64748b?text=No+Image';
 
@@ -16,12 +16,12 @@ const FILTER_CONFIG = {
     { label: '全部類型', value: 'All' },
     { label: '物品', value: '物品卡' },
     { label: '支援者', value: '支援者卡' },
-    { label: '道具', value: '寶可夢道具卡' }, 
+    { label: '道具', value: '寶可夢道具卡' },
     { label: '競技場', value: '競技場卡' }
   ],
   Energy: [
     { label: '全部', value: 'All' },
-    { label: '基本能量', value: '基本能量卡' }, 
+    { label: '基本能量', value: '基本能量卡' },
     { label: '特殊能量', value: '特殊能量卡' }
   ]
 };
@@ -54,10 +54,147 @@ const PRESET_DECKS = [
       { name: "險惡廢墟", count: 2 },
       { name: "基本【超】能量", count: 3 },
       { name: "基本【火】能量", count: 3 },
-      { name: "基本【惡】能量", count: 2 } 
+      { name: "基本【惡】能量", count: 2 }
     ]
   }
 ];
+
+const ENERGY_COLORS = {
+  '草': '#4ade80', '火': '#f97316', '水': '#38bdf8', '雷': '#facc15',
+  '超': '#c084fc', '鬥': '#b45309', '惡': '#7c3aed', '鋼': '#94a3b8',
+  '龍': '#fbbf24', '無': '#d1d5db',
+};
+
+function getEnergyType(energyName) {
+  const match = energyName.match(/【(.+?)】/);
+  return match ? match[1] : '無';
+}
+
+function getTier(score, tiers) {
+  if (tiers) {
+    if (score >= tiers.p95) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };
+    if (score >= tiers.p75) return { label: '優良', color: 'text-green-400', bg: 'bg-green-500/15 border-green-500/40' };
+    if (score >= tiers.p50) return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
+    if (score >= tiers.p25) return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
+    return { label: '天崩', color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/40' };
+  }
+  if (score >= 160) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };
+  if (score >= 120) return { label: '優良', color: 'text-green-400', bg: 'bg-green-500/15 border-green-500/40' };
+  if (score >= 80)  return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
+  if (score >= 40)  return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
+  return { label: '天崩', color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/40' };
+}
+
+function EnergyBadges({ energyCards }) {
+  if (!energyCards || energyCards.length === 0) return null;
+  return (
+    <div className="flex gap-0.5 flex-wrap mt-1 justify-center">
+      {energyCards.map((e, i) => {
+        const type = getEnergyType(e.name);
+        const color = ENERGY_COLORS[type] || ENERGY_COLORS['無'];
+        return (
+          <div
+            key={i}
+            className="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center text-[7px] font-black shadow-sm"
+            style={{ backgroundColor: color }}
+            title={e.name}
+          >
+            {type}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PokemonSlotCard({ slot, size = 'md' }) {
+  if (!slot) return null;
+  const sizeClass = size === 'lg' ? 'w-32' : 'w-20';
+  const hasChain = slot.chain && slot.chain.length > 1;
+  return (
+    <div className={`${sizeClass} flex-shrink-0 group`}>
+      <div className="relative rounded-sm overflow-hidden">
+        <img src={slot.image || FALLBACK_IMAGE} alt={slot.name} className="w-full h-auto" />
+        {hasChain && (
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 to-transparent px-1 pt-5 pb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <p className="text-[8px] text-blue-300 font-bold text-center leading-tight">
+              {slot.chain.map(c => c.name).join(' → ')}
+            </p>
+          </div>
+        )}
+      </div>
+      <p className="text-[10px] text-center text-gray-400 font-bold truncate mt-1">{slot.name}</p>
+      <EnergyBadges energyCards={slot.energy_cards} />
+    </div>
+  );
+}
+
+function StepLog({ log }) {
+  const [expanded, setExpanded] = useState(true);
+  const setupEntry = log.find(e => e.phase === 'setup');
+  const turns = log.filter(e => e.phase && e.phase !== 'setup');
+
+  return (
+    <div className="bg-[#020617] rounded-2xl border border-white/5">
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between p-4 text-left">
+        <span className="text-sm font-black text-gray-300">操作紀錄</span>
+        {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4 max-h-64 overflow-y-auto">
+          {setupEntry && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-black text-gray-400 bg-gray-500/10 px-2 py-0.5 rounded">起始設置</span>
+              </div>
+              <div className="ml-4 space-y-1">
+                <p className="text-xs text-gray-300">
+                  <span className="text-gray-500">起手牌：</span>{setupEntry.detail.hand.join('、')}
+                </p>
+                <p className="text-xs text-gray-300">
+                  <span className="text-gray-500">戰鬥區：</span>{setupEntry.detail.active || '（無）'}
+                </p>
+                {setupEntry.detail.bench.length > 0 && (
+                  <p className="text-xs text-gray-300">
+                    <span className="text-gray-500">備戰區：</span>{setupEntry.detail.bench.join('、')}
+                  </p>
+                )}
+                <p className="text-[10px] text-gray-600">
+                  獎賞 {setupEntry.detail.prizes_set_aside} 張 ｜ 牌庫 {setupEntry.detail.deck_remaining} 張
+                </p>
+              </div>
+            </div>
+          )}
+
+          {turns.map((turn, ti) => (
+            <div key={ti}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">{turn.phase}</span>
+                {turn.drew && <span className="text-xs text-gray-500">抽牌: {turn.drew}</span>}
+              </div>
+              {turn.steps.length === 0 && <p className="text-xs text-gray-600 ml-4">（無操作）</p>}
+              {turn.steps.map((step, si) => (
+                <div key={si} className="ml-4 mb-1.5 flex items-start gap-2">
+                  <span className="text-[10px] font-mono text-gray-600 mt-0.5 flex-shrink-0 w-4 text-right">{step.step}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-300 font-bold">{step.action}</p>
+                    {step.details.map((d, di) => (
+                      <p key={di} className="text-[11px] text-gray-500 ml-2">→ {d}</p>
+                    ))}
+                    <p className="text-[10px] text-gray-600 mt-0.5">
+                      牌庫 {step.deck_size} 張 ｜ 棄牌 {step.discard_size} 張
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function App() {
   const [cards, setCards] = useState([]);
@@ -68,11 +205,11 @@ export default function App() {
   const [simulationResult, setSimulationResult] = useState(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingCards, setIsLoadingCards] = useState(false);
 
-  // 計算牌組資訊
   const deckCount = deck.reduce((sum, c) => sum + (c.count || 1), 0);
   const pokemonCount = deck.filter(c => c.category === 'Pokemon').reduce((sum, c) => sum + c.count, 0);
   const trainerCount = deck.filter(c => c.category === 'Trainer').reduce((sum, c) => sum + c.count, 0);
@@ -114,30 +251,23 @@ export default function App() {
   };
 
   const addToDeck = (card) => {
-    // 👇 關鍵修改 1：改用 name 來尋找卡片
     const cardInDeck = deck.find(c => c.name === card.name);
     if (deckCount >= 60) return alert("牌組已滿 60 張！");
-
     if (card.isAceSpec) {
       const hasAceSpec = deck.some(c => c.isAceSpec);
-      // 防止同一張 ACE SPEC 點第二次時誤報
-      if (hasAceSpec && !cardInDeck) return alert("ACE SPEC 全牌組只能放一張！"); 
+      if (hasAceSpec && !cardInDeck) return alert("ACE SPEC 全牌組只能放一張！");
     }
-
     const isBasicEnergy = card.category === 'Energy' && (card.subCategory?.includes('基本') || card.name.includes('基本'));
     if (!isBasicEnergy && !card.isAceSpec) {
       if (cardInDeck && cardInDeck.count >= 4) return alert(`「${card.name}」最多只能放 4 張！`);
     }
-    
     if (cardInDeck) {
-      // 👇 關鍵修改 2：改用 name 來增加數量
       setDeck(deck.map(c => c.name === card.name ? { ...c, count: c.count + 1 } : c));
     } else {
       setDeck([...deck, { ...card, count: 1 }]);
     }
   };
 
-  // 👇 關鍵修改 3：接收 cardName 作為參數
   const removeFromDeck = (cardName) => {
     const cardInDeck = deck.find(c => c.name === cardName);
     if (!cardInDeck) return;
@@ -151,28 +281,36 @@ export default function App() {
   const startSimulation = async () => {
     if (deckCount !== 60) return alert("請先湊齊 60 張牌！");
     setIsSimulating(true);
+    setDiscardOpen(false);
     try {
-      const resp = await fetch('http://127.0.0.1:8000/api/simulate', {
+      const deckList = deck.map(c => ({ name: c.name, count: c.count, category: c.category, sub_type: c.subCategory || '' }));
+      const resp = await fetch('http://127.0.0.1:8000/api/simulate-t2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(deck)
+        body: JSON.stringify({ deck: deckList })
       });
-      setSimulationResult(await resp.json());
+      const result = await resp.json();
+      setSimulationResult(result);
       setShowModal(true);
     } catch (e) { alert("連線錯誤"); }
     finally { setIsSimulating(false); }
   };
 
+  const board = simulationResult?.board;
+  const score = simulationResult?.score;
+  const tiers = simulationResult?.tiers;
+  const tier = score != null ? getTier(score, tiers) : null;
+
   return (
     <div className="flex h-screen w-screen bg-[#020617] text-white overflow-hidden">
-      
+
       {/* 左：畫廊 */}
       <div className="flex-1 flex flex-col border-r border-gray-800 relative">
         <div className="p-6 bg-[#0f172a] shadow-md z-20">
           <h1 className="text-2xl font-black flex items-center gap-3 mb-4"><Zap className="text-yellow-400 fill-yellow-400" /> PTCG 展開模擬器</h1>
           <div className="flex gap-3">
-            <input 
-              className="flex-1 bg-[#1e293b] border border-gray-700 rounded-xl px-4 py-2" 
+            <input
+              className="flex-1 bg-[#1e293b] border border-gray-700 rounded-xl px-4 py-2"
               placeholder="搜尋卡片..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -232,8 +370,7 @@ export default function App() {
 
       {/* 右：牌組管理區 */}
       <div className="w-96 bg-[#0f172a] flex flex-col z-40 shadow-2xl border-l border-gray-800">
-        
-        {/* 1. 快速載入 */}
+
         <div className="p-4 bg-[#1e293b] border-b border-gray-800">
           <select className="w-full bg-[#0f172a] rounded-lg p-2 text-blue-400 font-bold" onChange={e => e.target.value && loadPresetDeck(e.target.value)} defaultValue="">
             <option value="" disabled>快速載入主流牌組...</option>
@@ -241,7 +378,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* 2. 牌組統計與進度條 */}
         <div className="p-5 border-b border-gray-800 space-y-4">
           <div className="flex justify-between items-end">
             <h2 className="text-xl font-black">目前牌組</h2>
@@ -259,7 +395,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* 3. 牌組清單 (含操作按鈕) */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {deck.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-50 space-y-2">
@@ -268,7 +403,7 @@ export default function App() {
             </div>
           ) : (
             deck.map(c => (
-              <div key={c.id} className="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-white/5 group transition-all hover:bg-[#253248]">
+              <div key={c.name} className="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-white/5 group transition-all hover:bg-[#253248]">
                 <span className={`text-sm font-bold truncate pr-2 ${c.isAceSpec ? 'text-pink-400' : 'text-gray-200'}`}>{c.name}</span>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center bg-gray-900/50 rounded-lg border border-white/5 p-1">
@@ -286,108 +421,166 @@ export default function App() {
         </div>
 
         <button onClick={startSimulation} disabled={deckCount !== 60 || isSimulating} className="m-6 p-4 bg-blue-600 rounded-xl font-black text-lg hover:bg-blue-500 disabled:bg-gray-800 transition-colors shadow-lg">
-          {isSimulating ? '發牌中...' : '開始模擬起手'}
+          {isSimulating ? '模擬中...' : '開始展開模擬'}
         </button>
       </div>
 
-      {/* 彈出視窗 */}
-      {showModal && simulationResult && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
-          
-          <div className="relative w-full max-w-5xl bg-[#0f172a] border border-blue-500/30 rounded-[40px] shadow-[0_0_80px_rgba(37,99,235,0.25)] overflow-hidden flex flex-col max-h-[90vh]">
-            
-            <div className="p-8 border-b border-gray-800 flex justify-between items-center bg-[#1e293b]/50 shrink-0">
-              <div>
-                <h2 className="text-4xl font-black text-white flex items-center gap-4">
-                  <Zap className="text-yellow-400 fill-yellow-400 w-10 h-10" /> 模擬起手結果
+      {/* T2 模擬結果 */}
+      {showModal && board && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className={`relative w-full bg-[#0f172a] border border-blue-500/30 rounded-3xl shadow-[0_0_80px_rgba(37,99,235,0.15)] overflow-hidden flex flex-col max-h-[95vh] transition-all duration-500 ease-in-out ${discardOpen ? 'max-w-[1400px]' : 'max-w-5xl'}`}>
+
+            {/* Header */}
+            <div className="px-8 py-5 border-b border-gray-800 flex justify-between items-center bg-[#1e293b]/50 shrink-0">
+              <div className="flex items-center gap-5">
+                <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                  <Zap className="text-yellow-400 fill-yellow-400 w-7 h-7" /> T2 展開結果
                 </h2>
-                <p className="text-gray-400 mt-2 text-lg">依照 PTCG 標準規則自動洗牌與發牌</p>
+                {tier && (
+                  <div className={`px-4 py-1.5 rounded-xl border ${tier.bg} flex items-center gap-2`}>
+                    <span className={`text-xl font-black ${tier.color}`}>{tier.label}</span>
+                    <span className="text-[10px] text-gray-600 font-mono">({Math.round(score)})</span>
+                  </div>
+                )}
               </div>
-              <button 
-                onClick={() => setShowModal(false)}
-                className="bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full transition-colors"
-              >
-                <X className="w-8 h-8" />
+              <button onClick={() => { setShowModal(false); setDiscardOpen(false); }} className="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full transition-colors">
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-10 overflow-y-auto flex-1">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
-                
-                {/* 左側資訊統計與獎賞卡 */}
-                <div className="lg:col-span-1 space-y-6">
-                  <div className="bg-[#020617] p-6 rounded-3xl border border-white/5 shadow-inner">
-                    <p className="text-gray-500 text-xs font-black uppercase tracking-widest mb-1">Mulligan 次數</p>
-                    <h3 className="text-6xl font-black text-blue-400 font-mono">
-                      {simulationResult.mulliganCount}
-                    </h3>
-                  </div>
-                  
-                  <div className="bg-[#020617] p-5 rounded-3xl border border-white/5 shadow-inner">
-                    <p className="text-pink-500 text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse"></span>
-                      獎賞卡 (Prize Cards)
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {simulationResult.prizes.map((card, idx) => (
-                        <div key={`prize-${idx}`} className="relative rounded-lg overflow-hidden shadow-md ring-1 ring-white/10 group">
-                          <img 
-                            src={card.image || FALLBACK_IMAGE} 
-                            alt={card.name} 
-                            className="w-full h-auto transition-transform duration-300 group-hover:scale-110"
-                          />
-                          <div className="absolute inset-x-0 bottom-0 bg-black/80 p-1 translate-y-full group-hover:translate-y-0 transition-transform duration-200">
-                            <p className="text-[8px] text-white text-center font-bold truncate">{card.name}</p>
-                          </div>
+            {/* Body: board + discard panel */}
+            <div className="flex-1 overflow-hidden flex">
+
+              {/* Main board area */}
+              <div className="flex-1 min-w-0 overflow-y-auto p-6 transition-all duration-500 ease-in-out">
+                <div className="grid grid-cols-[140px_1fr_120px] gap-6 items-start mb-6">
+
+                  {/* Left: Prizes (face up) */}
+                  <div>
+                    <p className="text-[10px] font-black text-pink-500 uppercase tracking-wider mb-2 text-center">獎賞卡</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {board.prize_cards.map((card, i) => (
+                        <div key={i} className="rounded overflow-hidden ring-1 ring-white/10">
+                          <img src={card.image || FALLBACK_IMAGE} alt={card.name} className="w-full h-auto" />
                         </div>
                       ))}
                     </div>
                   </div>
+
+                  {/* Center: Active + Bench */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div>
+                      <p className="text-[10px] font-black text-yellow-500 uppercase tracking-wider mb-2 text-center">戰鬥區</p>
+                      {board.active_detail ? (
+                        <PokemonSlotCard slot={board.active_detail} size="lg" />
+                      ) : (
+                        <div className="w-32 aspect-[2.5/3.5] bg-[#1e293b] rounded-lg border border-dashed border-gray-700 flex items-center justify-center">
+                          <span className="text-gray-700 text-xs">空</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-black text-green-500 uppercase tracking-wider mb-2 text-center">備戰區</p>
+                      <div className="flex gap-2 justify-center">
+                        {board.bench_details.map((slot, i) => (
+                          <PokemonSlotCard key={i} slot={slot} size="md" />
+                        ))}
+                        {Array.from({ length: 5 - board.bench_details.length }).map((_, i) => (
+                          <div key={`empty-${i}`} className="w-20 aspect-[2.5/3.5] bg-[#0a0f1e] rounded border border-dashed border-gray-800" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Deck + Discard */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-2 text-center">牌庫</p>
+                      <div className="aspect-[2.5/3.5] bg-[#1e293b] rounded-lg border border-white/10 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-black text-blue-400 font-mono">{board.deck_size}</span>
+                        <span className="text-[10px] text-gray-500">張</span>
+                      </div>
+                    </div>
+                    <div
+                      className="cursor-pointer group"
+                      onClick={() => board.discard_cards.length > 0 && setDiscardOpen(!discardOpen)}
+                    >
+                      <p className="text-[10px] font-black text-orange-400 uppercase tracking-wider mb-2 text-center">棄牌區</p>
+                      <div className={`aspect-[2.5/3.5] bg-[#1e293b] rounded-lg border flex flex-col items-center justify-center transition-colors ${discardOpen ? 'border-orange-500/60 ring-1 ring-orange-500/30' : 'border-white/10 group-hover:border-orange-500/50'}`}>
+                        <span className="text-2xl font-black text-orange-400 font-mono">{board.discard_size}</span>
+                        <span className="text-[10px] text-gray-500">張</span>
+                      </div>
+                      {board.discard_size > 0 && (
+                        <p className="text-[10px] text-gray-600 text-center mt-1.5 flex items-center justify-center gap-1 group-hover:text-orange-400 transition-colors">
+                          <Eye className="w-3 h-3" /> {discardOpen ? '收起' : '展開'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* 右側手牌展示 (7 張單排並自動縮放) */}
-                <div className="lg:col-span-3">
-                  <h3 className="text-xl font-bold mb-6 text-gray-300 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
-                    起手 7 張牌
-                  </h3>
-                  
-                  <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
-                    {simulationResult.hand.map((card, idx) => (
-                      <div key={`hand-${idx}`} className="space-y-2 md:space-y-3 group">
-                        <div className="relative rounded-md md:rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 group-hover:ring-blue-500 transition-all">
-                          <img 
-                            src={card.image || FALLBACK_IMAGE} 
-                            alt={card.name} 
-                            className="w-full h-auto"
-                          />
+                {/* Hand */}
+                <div className="mb-6">
+                  <p className="text-[10px] font-black text-cyan-400 uppercase tracking-wider mb-3">手牌（{board.hand_size} 張）</p>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {board.hand_cards.map((card, i) => (
+                      <div key={i} className="w-20 flex-shrink-0">
+                        <div className="rounded-lg overflow-hidden ring-1 ring-white/10 hover:ring-cyan-500/50 transition-all">
+                          <img src={card.image || FALLBACK_IMAGE} alt={card.name} className="w-full h-auto" />
                         </div>
-                        <p className="text-[10px] md:text-xs text-center text-gray-500 font-bold truncate px-1">
-                          {card.name}
-                        </p>
+                        <p className="text-[9px] text-center text-gray-500 font-bold truncate mt-1">{card.name}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                {/* Step Log */}
+                <StepLog log={simulationResult.log} />
+              </div>
+
+              {/* Discard panel (slides in from right) */}
+              <div
+                className={`shrink-0 overflow-y-auto border-l bg-[#0a0f1e] transition-all duration-500 ease-in-out ${
+                  discardOpen ? 'w-72 opacity-100 p-4 border-gray-800' : 'w-0 opacity-0 p-0 border-transparent'
+                }`}
+              >
+                <div className="min-w-[260px]">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-black text-orange-400">棄牌區（{board.discard_size} 張）</p>
+                    <button onClick={() => setDiscardOpen(false)} className="text-gray-500 hover:text-white">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {board.discard_cards.map((card, i) => (
+                      <div key={i}>
+                        <div className="rounded-sm overflow-hidden ring-1 ring-white/10">
+                          <img src={card.image || FALLBACK_IMAGE} alt={card.name} className="w-full h-auto" />
+                        </div>
+                        <p className="text-[9px] text-center text-gray-500 font-bold truncate mt-1">{card.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="p-8 border-t border-gray-800 bg-[#020617] flex justify-center gap-4 shrink-0">
-              <button 
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-800 bg-[#020617] flex justify-center gap-4 shrink-0">
+              <button
                 onClick={startSimulation}
-                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-lg hover:shadow-blue-500/20 active:scale-95"
+                className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-base transition-all shadow-lg active:scale-95"
               >
-                重新發牌
+                重新模擬
               </button>
-              <button 
-                onClick={() => setShowModal(false)}
-                className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-2xl font-black text-xl transition-all"
+              <button
+                onClick={() => { setShowModal(false); setDiscardOpen(false); }}
+                className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-black text-base transition-all"
               >
                 返回編輯
               </button>
             </div>
-            
           </div>
         </div>
       )}

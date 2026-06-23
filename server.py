@@ -105,10 +105,10 @@ async def run_simulation(request: Request):
     for item in raw_deck:
         for i in range(item.get('count', 1)):
             deck.append(item)
-            
+
     random.shuffle(deck)
     mulligan_count = 0
-    
+
     while True:
         hand = deck[:7]
         remaining = deck[7:]
@@ -118,13 +118,75 @@ async def run_simulation(request: Request):
         mulligan_count += 1
         random.shuffle(deck)
         if mulligan_count > 15: break
-            
+
     prizes = deck[7:13]
     return {
         "hand": hand,
         "prizes": prizes,
         "mulliganCount": mulligan_count
     }
+
+# ─── T2 展開模擬 ───
+
+DEFAULT_PLAYBOOK = {
+    "active_priority": ["含羞苞", "可達鴨", "願增猿", "土龍弟弟", "多龍梅西亞"],
+    "setup_bench_priority": ["多龍梅西亞", "土龍弟弟", "願增猿"],
+    "no_bench": ["可達鴨"],
+    "play_priority": [
+        {"card": "bench_basics"},
+        {"card": "好友寶芬", "conditions": {"bench_open_gte": 2}},
+        {"card": "寶可平板"}, {"card": "高級球"}, {"card": "寶可裝置3.0"},
+        {"card": "夜間擔架"},
+        {"card": "evolve"}, {"card": "use_ability"},
+        {"card": "attach_energy"},
+        {"card": "莉莉艾的決意"}, {"card": "赤松"},
+        {"card": "小剛的發掘", "conditions": {"hand_size_lte": 3}},
+    ],
+    "search_priority": [
+        "多龍梅西亞", "土龍弟弟", "多龍奇", "多龍巴魯托ex",
+        "願增猿", "含羞苞", "土龍節節ex",
+    ],
+    "discard_priority": ["Energy", "特殊紅牌", "老大的指令", "險惡廢墟"],
+    "bench_priority": ["多龍梅西亞", "土龍弟弟", "願增猿"],
+    "energy_target": ["多龍梅西亞", "多龍奇", "土龍弟弟"],
+    "evolution_lines": {
+        "多龍梅西亞": ["多龍奇", "多龍巴魯托ex"],
+        "土龍弟弟": ["土龍節節ex", "土龍節節"],
+    },
+}
+
+TIER_CACHE: dict[str, dict] = {}
+
+def _compute_tiers(runner, n=200):
+    scores = []
+    for _ in range(n):
+        r = runner.run_once(turns=2, going_first=True)
+        scores.append(r['score'])
+    scores.sort()
+    total = len(scores)
+    return {
+        'p95': scores[int(total * 0.95)],
+        'p75': scores[int(total * 0.75)],
+        'p50': scores[int(total * 0.50)],
+        'p25': scores[int(total * 0.25)],
+    }
+
+@app.post("/api/simulate-t2")
+async def simulate_t2(request: Request):
+    from playbook import SimulationRunner
+    body = await request.json()
+    deck_list = body.get("deck", [])
+    playbook = body.get("playbook", DEFAULT_PLAYBOOK)
+    runner = SimulationRunner(deck_list, playbook)
+
+    deck_key = ",".join(sorted(f"{d['name']}:{d['count']}" for d in deck_list))
+    if deck_key not in TIER_CACHE:
+        TIER_CACHE[deck_key] = _compute_tiers(runner, n=200)
+    tiers = TIER_CACHE[deck_key]
+
+    result = runner.run_once(turns=2, going_first=True)
+    result['tiers'] = tiers
+    return result
 
 if __name__ == "__main__":
     import uvicorn

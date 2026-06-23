@@ -1,0 +1,250 @@
+{
+  "_meta": {
+    "description": "PTCG 卡牌效果 DSL 定義檔",
+    "version": "1.0",
+    "action_types": [
+      "draw           — 從牌庫抽 N 張",
+      "search_deck    — 搜尋牌庫，選取符合條件的牌",
+      "look_top       — 查看牌庫頂 N 張，選取後剩餘處理",
+      "discard_hand   — 丟棄全部手牌",
+      "switch_active  — 替換戰鬥區與備戰區寶可夢",
+      "evolve         — 進化場上寶可夢",
+      "recover        — 從棄牌區回收",
+      "energy_recov   — 從棄牌區回收能量"
+    ]
+  },
+
+  "cards": {
+    "好友寶芬": {
+      "sub_type": "物品卡",
+      "effects": [
+        {
+          "action": "search_deck",
+          "filter": {"category": "Pokemon", "stage": "基礎", "hp_lte": 70},
+          "up_to": 2,
+          "destination": "bench"
+        }
+      ]
+    },
+
+    "高級球": {
+      "sub_type": "物品卡",
+      "cost": {"action": "discard_from_hand", "count": 2},
+      "effects": [
+        {
+          "action": "search_deck",
+          "filter": {"category": "Pokemon"},
+          "up_to": 1,
+          "destination": "hand"
+        }
+      ]
+    },
+
+    "精靈球": {
+      "sub_type": "物品卡",
+      "effects": [
+        {
+          "action": "look_top",
+          "count": 5,
+          "pick_filter": {"category": "Pokemon"},
+          "pick_up_to": 1,
+          "rest": "shuffle_back"
+        }
+      ]
+    },
+
+    "神奇糖果": {
+      "sub_type": "物品卡",
+      "effects": [
+        {
+          "action": "evolve",
+          "skip_stage": true
+        }
+      ],
+      "constraints": {"min_turn_in_play": 1}
+    },
+
+    "夜間擔架": {
+      "sub_type": "物品卡",
+      "mode": "choose_one",
+      "options": [
+        {
+          "id": "recover_pokemon",
+          "effects": [
+            {
+              "action": "recover",
+              "filter": {"category": "Pokemon"},
+              "count": 1,
+              "destination": "hand"
+            }
+          ]
+        },
+        {
+          "id": "recover_energy",
+          "effects": [
+            {
+              "action": "recover",
+              "filter": {"category": "Energy", "sub_type": "基本能量卡"},
+              "count": 3,
+              "destination": "deck"
+            }
+          ]
+        }
+      ]
+    },
+
+    "調換票": {
+      "sub_type": "物品卡",
+      "effects": [
+        {"action": "switch_active"}
+      ]
+    },
+
+    "能量回收": {
+      "sub_type": "物品卡",
+      "effects": [
+        {
+          "action": "recover",
+          "filter": {"category": "Energy", "sub_type": "基本能量卡"},
+          "count": 2,
+          "destination": "hand"
+        }
+      ]
+    },
+
+    "大師球": {
+      "sub_type": "物品卡",
+      "is_ace_spec": true,
+      "effects": [
+        {
+          "action": "search_deck",
+          "filter": {"category": "Pokemon"},
+          "up_to": 1,
+          "destination": "hand"
+        }
+      ]
+    },
+
+    "探險家的嚮導": {
+      "sub_type": "支援者卡",
+      "effects": [
+        {
+          "action": "look_top",
+          "count": 6,
+          "pick_filter": {"category_in": ["Pokemon", "BasicEnergy"]},
+          "pick_up_to": 3,
+          "rest": "discard"
+        }
+      ]
+    },
+
+    "裁判": {
+      "sub_type": "支援者卡",
+      "effects": [
+        {"action": "shuffle_hand_draw", "count": 4}
+      ]
+    },
+
+    "N的謀劃": {
+      "sub_type": "支援者卡",
+      "effects": [
+        {"action": "shuffle_hand_draw", "count": "prizes_remaining"}
+      ]
+    },
+
+    "寶可裝置3.0": {
+      "sub_type": "物品卡",
+      "effects": [
+        {
+          "action": "look_top",
+          "count": 7,
+          "pick_filter": {"category": "Trainer", "sub_type": "支援者卡"},
+          "pick_up_to": 1,
+          "rest": "shuffle_back"
+        }
+      ]
+    },
+
+    "寶可平板": {
+      "sub_type": "物品卡",
+      "effects": [
+        {
+          "action": "search_deck",
+          "filter": {"category": "Pokemon"},
+          "up_to": 1,
+          "destination": "hand"
+        }
+      ]
+    },
+
+    "莉莉艾的決意": {
+      "sub_type": "支援者卡",
+      "effects": [
+        {"action": "shuffle_hand_draw", "count": 8}
+      ]
+    },
+
+    "赤松": {
+      "sub_type": "支援者卡",
+      "effects": [
+        {
+          "action": "search_deck",
+          "filter": {"category": "Energy", "sub_type": "基本能量卡"},
+          "up_to": 1,
+          "destination": "hand"
+        },
+        {
+          "action": "search_deck",
+          "filter": {"category": "Energy", "sub_type": "基本能量卡"},
+          "up_to": 1,
+          "destination": "attach"
+        }
+      ]
+    },
+
+    "小剛的發掘": {
+      "sub_type": "支援者卡",
+      "mode": "choose_one",
+      "options": [
+        {
+          "id": "two_basics",
+          "effects": [
+            {
+              "action": "search_deck",
+              "filter": {"category": "Pokemon", "stage": "基礎"},
+              "up_to": 2,
+              "destination": "hand"
+            }
+          ]
+        },
+        {
+          "id": "one_evolution",
+          "effects": [
+            {
+              "action": "search_deck",
+              "filter": {"category": "Pokemon", "stage_in": ["1階進化", "2階進化"]},
+              "up_to": 1,
+              "destination": "hand"
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "abilities": {
+    "多龍奇": {
+      "name": "偵查指令",
+      "once_per_turn_per_pokemon": true,
+      "effects": [
+        {
+          "action": "look_top",
+          "count": 2,
+          "pick_filter": {},
+          "pick_up_to": 1,
+          "rest": "bottom"
+        }
+      ]
+    }
+  }
+}
