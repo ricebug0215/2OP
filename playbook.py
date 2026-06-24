@@ -46,8 +46,11 @@ class PlaybookDecisionMaker(DecisionMaker):
         skip = skip or set()
         evolved_ids = evolved_ids or set()
         used_ability_ids = used_ability_ids or set()
+        do_not_play = set(self.pb.get('do_not_play', []))
         for rule in self.pb.get('play_priority', []):
             card_name = rule['card']
+            if card_name in do_not_play:
+                continue
 
             if card_name == 'attach_energy':
                 action = self._try_attach_energy(state)
@@ -101,9 +104,11 @@ class PlaybookDecisionMaker(DecisionMaker):
             return None
         bench_priority = self.pb.get('bench_priority', [])
         no_bench = set(self.pb.get('no_bench', []))
+        do_not_play = set(self.pb.get('do_not_play', []))
         basics = [
             (i, c) for i, c in enumerate(state.hand)
-            if c.category == 'Pokemon' and c.stage == '基礎' and c.name not in no_bench
+            if c.category == 'Pokemon' and c.stage == '基礎'
+            and c.name not in no_bench and c.name not in do_not_play
         ]
         if not basics:
             return None
@@ -116,6 +121,7 @@ class PlaybookDecisionMaker(DecisionMaker):
         if state.turn < 2:
             return None
         evo_lines = self.pb.get('evolution_lines', {})
+        do_not_play = set(self.pb.get('do_not_play', []))
         for slot in state.all_in_play:
             if id(slot) in evolved_ids:
                 continue
@@ -123,6 +129,8 @@ class PlaybookDecisionMaker(DecisionMaker):
                 continue
             line = evo_lines.get(slot.base.name, [])
             for evo_name in line:
+                if evo_name in do_not_play:
+                    continue
                 for hand_i, hc in enumerate(state.hand):
                     if hc.name == evo_name and hc.category == 'Pokemon':
                         if slot.can_evolve_to(hc):
@@ -191,8 +199,17 @@ class PlaybookDecisionMaker(DecisionMaker):
             return []
         count = min(count, len(candidates))
 
+        do_not_play = set(self.pb.get('do_not_play', []))
+
         if 'search' in context or 'look_top' in context or 'recover' in context:
             priority = self.pb.get('search_priority', [])
+            if do_not_play:
+                allowed = [i for i, c in enumerate(candidates)
+                           if (c.name if isinstance(c, Card) else c) not in do_not_play]
+                if allowed:
+                    filtered = [candidates[i] for i in allowed]
+                    picks = self._pick_multiple_by_priority(filtered, count, priority)
+                    return [allowed[p] for p in picks]
             return self._pick_multiple_by_priority(candidates, count, priority)
 
         if 'evolve' in context:
@@ -276,6 +293,7 @@ class SimulationRunner:
             deck, going_first=going_first,
             active_priority=self.playbook.get('active_priority'),
             bench_priority=self.playbook.get('setup_bench_priority'),
+            do_not_play=set(self.playbook.get('do_not_play', [])),
         )
         dm = PlaybookDecisionMaker(self.playbook, self.effect_engine)
 
@@ -513,7 +531,7 @@ if __name__ == '__main__':
     demo_playbook = {
         "active_priority": ["含羞苞", "願增猿", "土龍弟弟", "多龍梅西亞"],
         "setup_bench_priority": ["多龍梅西亞", "土龍弟弟", "願增猿"],
-        "no_bench": ["可達鴨"],
+        "no_bench": ["土龍弟弟", "可達鴨"],
         "play_priority": [
             {"card": "bench_basics"},
             {"card": "好友寶芬", "conditions": {"bench_open_gte": 2}},

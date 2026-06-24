@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, Zap, BookOpen, X, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Zap, BookOpen, X, ChevronDown, ChevronUp, Eye, Ban } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://placehold.co/240x336/1e293b/64748b?text=No+Image';
 
@@ -71,17 +71,11 @@ function getEnergyType(energyName) {
 }
 
 function getTier(score, tiers) {
-  if (tiers) {
-    if (score >= tiers.p95) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };
-    if (score >= tiers.p75) return { label: '優良', color: 'text-green-400', bg: 'bg-green-500/15 border-green-500/40' };
-    if (score >= tiers.p40) return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
-    if (score >= tiers.p5) return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
-    return { label: '天崩', color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/40' };
-  }
-  if (score >= 160) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };
-  if (score >= 120) return { label: '優良', color: 'text-green-400', bg: 'bg-green-500/15 border-green-500/40' };
-  if (score >= 80)  return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
-  if (score >= 40)  return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
+  if (!tiers) return null;
+  if (score >= tiers.p95) return { label: '天胡', color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/40' };
+  if (score >= tiers.p75) return { label: '優良', color: 'text-green-400', bg: 'bg-green-500/15 border-green-500/40' };
+  if (score >= tiers.p40) return { label: '普通', color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/40' };
+  if (score >= tiers.p5) return { label: '不好', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40' };
   return { label: '天崩', color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/40' };
 }
 
@@ -284,14 +278,32 @@ export default function App() {
     setDiscardOpen(false);
     try {
       const deckList = deck.map(c => ({ name: c.name, count: c.count, category: c.category, sub_type: c.subCategory || '' }));
+      const doNotPlay = deck.filter(c => c.excluded).map(c => c.name);
       const resp = await fetch('http://127.0.0.1:8000/api/simulate-t2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deck: deckList })
+        body: JSON.stringify({ deck: deckList, do_not_play: doNotPlay })
       });
       const result = await resp.json();
       setSimulationResult(result);
       setShowModal(true);
+
+      if (!result.tiers) {
+        const poll = setInterval(async () => {
+          try {
+            const r = await fetch('http://127.0.0.1:8000/api/tiers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ deck: deckList })
+            });
+            const data = await r.json();
+            if (data.ready) {
+              clearInterval(poll);
+              setSimulationResult(prev => prev ? { ...prev, tiers: data.tiers } : prev);
+            }
+          } catch {}
+        }, 1500);
+      }
     } catch (e) { alert("連線錯誤"); }
     finally { setIsSimulating(false); }
   };
@@ -403,9 +415,16 @@ export default function App() {
             </div>
           ) : (
             deck.map(c => (
-              <div key={c.name} className="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-white/5 group transition-all hover:bg-[#253248]">
-                <span className={`text-sm font-bold truncate pr-2 ${c.isAceSpec ? 'text-pink-400' : 'text-gray-200'}`}>{c.name}</span>
+              <div key={c.name} className={`flex items-center justify-between p-3 rounded-xl border group transition-all ${c.excluded ? 'bg-red-950/30 border-red-500/20' : 'bg-[#1e293b] border-white/5 hover:bg-[#253248]'}`}>
+                <span className={`text-sm font-bold truncate pr-2 ${c.excluded ? 'text-gray-500 line-through' : c.isAceSpec ? 'text-pink-400' : 'text-gray-200'}`}>{c.name}</span>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDeck(deck.map(d => d.name === c.name ? { ...d, excluded: !d.excluded } : d))}
+                    className={`p-1.5 transition-colors ${c.excluded ? 'text-red-400 hover:text-red-300' : 'text-gray-600 hover:text-red-400'}`}
+                    title={c.excluded ? '取消禁用' : '模擬時不出這張牌'}
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                  </button>
                   <div className="flex items-center bg-gray-900/50 rounded-lg border border-white/5 p-1">
                     <button onClick={() => removeFromDeck(c.name)} className="p-1 hover:text-red-400"><Minus className="w-3 h-3" /></button>
                     <span className="w-6 text-center text-xs font-mono font-bold text-blue-400">{c.count}</span>
@@ -436,11 +455,18 @@ export default function App() {
                 <h2 className="text-2xl font-black text-white flex items-center gap-3">
                   <Zap className="text-yellow-400 fill-yellow-400 w-7 h-7" /> T2 展開結果
                 </h2>
-                {tier && (
-                  <div className={`px-4 py-1.5 rounded-xl border ${tier.bg} flex items-center gap-2`}>
-                    <span className={`text-xl font-black ${tier.color}`}>{tier.label}</span>
-                    <span className="text-[10px] text-gray-600 font-mono">({Math.round(score)})</span>
-                  </div>
+                {score != null && (
+                  tier ? (
+                    <div className={`px-4 py-1.5 rounded-xl border ${tier.bg} flex items-center gap-2 animate-[fadeIn_0.4s_ease-out]`}>
+                      <span className={`text-xl font-black ${tier.color}`}>{tier.label}</span>
+                      <span className="text-[10px] text-gray-600 font-mono">({Math.round(score)})</span>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-1.5 rounded-xl border border-gray-700 bg-gray-800/50 flex items-center gap-2">
+                      <span className="text-sm text-gray-500 animate-pulse">評級計算中...</span>
+                      <span className="text-[10px] text-gray-600 font-mono">({Math.round(score)})</span>
+                    </div>
+                  )
                 )}
               </div>
               <button onClick={() => { setShowModal(false); setDiscardOpen(false); }} className="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full transition-colors">

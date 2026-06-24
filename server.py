@@ -156,38 +156,67 @@ DEFAULT_PLAYBOOK = {
 }
 
 TIER_CACHE: dict[str, dict] = {}
+_TIER_COMPUTING: set[str] = set()
 
-def _compute_tiers(runner, n=500):
+def _deck_key(deck_list: list[dict]) -> str:
+    return ",".join(sorted(f"{d['name']}:{d['count']}" for d in deck_list))
+
+def _compute_tiers_bg(deck_list: list[dict], playbook: dict, key: str):
+    from playbook import SimulationRunner
+    runner = SimulationRunner(deck_list, playbook)
+    n = 500
     scores = []
     for _ in range(n):
         r = runner.run_once(turns=2, going_first=True)
         scores.append(r['score'])
     scores.sort()
     total = len(scores)
-    return {
+    TIER_CACHE[key] = {
         'p95': scores[int(total * 0.95)],
         'p75': scores[int(total * 0.75)],
         'p40': scores[int(total * 0.40)],
         'p5': scores[int(total * 0.05)],
     }
+    _TIER_COMPUTING.discard(key)
 
 @app.post("/api/simulate-t2")
 async def simulate_t2(request: Request):
+    from fastapi import BackgroundTasks
     from playbook import SimulationRunner
     body = await request.json()
     deck_list = body.get("deck", [])
-    playbook = body.get("playbook", DEFAULT_PLAYBOOK)
+    do_not_play = body.get("do_not_play", [])
+    playbook = dict(body.get("playbook", DEFAULT_PLAYBOOK))
+    if do_not_play:
+        playbook['do_not_play'] = do_not_play
     runner = SimulationRunner(deck_list, playbook)
-
-    deck_key = ",".join(sorted(f"{d['name']}:{d['count']}" for d in deck_list))
-    if deck_key not in TIER_CACHE:
-        TIER_CACHE[deck_key] = _compute_tiers(runner)
-        print(f"Debug: computed tiers for deck: {deck_key} -> {TIER_CACHE[deck_key]}")
-    tiers = TIER_CACHE[deck_key]
+    key = _deck_key(deck_list)
 
     result = runner.run_once(turns=2, going_first=True)
-    result['tiers'] = tiers
+
+    if key in TIER_CACHE:
+        result['tiers'] = TIER_CACHE[key]
+    else:
+        result['tiers'] = None
+        if key not in _TIER_COMPUTING:
+            _TIER_COMPUTING.add(key)
+            import threading
+            threading.Thread(
+                target=_compute_tiers_bg,
+                args=(deck_list, playbook, key),
+                daemon=True,
+            ).start()
+
     return result
+
+@app.post("/api/tiers")
+async def get_tiers(request: Request):
+    body = await request.json()
+    deck_list = body.get("deck", [])
+    key = _deck_key(deck_list)
+    if key in TIER_CACHE:
+        return {"tiers": TIER_CACHE[key], "ready": True}
+    return {"tiers": None, "ready": False}
 
 if __name__ == "__main__":
     import uvicorn

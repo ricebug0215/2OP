@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 /* 強制讓網頁的最底層也是深藍色，並移除所有邊距 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 html, body, #root {
   margin: 0;
   padding: 0;

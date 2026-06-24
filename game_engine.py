@@ -681,7 +681,8 @@ def build_deck(deck_list: list[dict], master_db: list[dict] | None = None) -> li
 
 def setup_game(deck: list[Card], going_first: bool = True,
                active_priority: list[str] | None = None,
-               bench_priority: list[str] | None = None) -> GameState:
+               bench_priority: list[str] | None = None,
+               do_not_play: set[str] | None = None) -> GameState:
     state = GameState()
     state.deck = list(deck)
     state.going_first = going_first
@@ -705,16 +706,21 @@ def setup_game(deck: list[Card], going_first: bool = True,
     state.prizes = state.deck[:GameState.PRIZE_COUNT]
     state.deck = state.deck[GameState.PRIZE_COUNT:]
 
+    _dnp = do_not_play or set()
     basics_in_hand = [i for i, c in enumerate(state.hand)
                       if c.category == 'Pokemon' and c.stage == '基礎']
 
     if not basics_in_hand:
         return state
 
+    # prefer non-banned basics; fall back to all basics if every basic is banned
+    allowed_basics = [i for i in basics_in_hand if state.hand[i].name not in _dnp]
+    active_pool = allowed_basics or basics_in_hand
+
     if active_priority:
-        best_idx = basics_in_hand[0]
+        best_idx = active_pool[0]
         best_rank = 9999
-        for idx in basics_in_hand:
+        for idx in active_pool:
             name = state.hand[idx].name
             rank = next((r for r, p in enumerate(active_priority) if p == name), 9999)
             if rank < best_rank:
@@ -722,12 +728,13 @@ def setup_game(deck: list[Card], going_first: bool = True,
                 best_idx = idx
         active_card = state.hand.pop(best_idx)
     else:
-        active_card = state.hand.pop(basics_in_hand[0])
+        active_card = state.hand.pop(active_pool[0])
     state.active = PokemonSlot(active_card)
 
     if bench_priority:
         remaining_basics = [(i, c) for i, c in enumerate(state.hand)
-                            if c.category == 'Pokemon' and c.stage == '基礎']
+                            if c.category == 'Pokemon' and c.stage == '基礎'
+                            and c.name not in _dnp]
         to_bench = []
         for pname in bench_priority:
             for i, c in remaining_basics:
