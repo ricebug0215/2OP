@@ -4,8 +4,72 @@ PTCG 遊戲引擎 — T1/T2 展開模擬用
 
 import json
 import random
+import re
 from copy import deepcopy
 from pathlib import Path
+
+
+# ═══════════════════════════════════════
+#  進化關係表 (由 generate_effects.py --evolution 產生)
+# ═══════════════════════════════════════
+
+def _load_json_map(filename: str) -> dict:
+    path = Path(__file__).parent / filename
+    if path.exists():
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+
+# {進化卡名: 進化前卡名}
+EVOLVES_FROM: dict[str, str] = _load_json_map('evolution_chains.json')
+
+# {寶可夢名: [主力需要的能量屬性]}；[] 表示無色攻擊手(任意能量)
+ENERGY_PROFILES: dict[str, list] = _load_json_map('energy_profiles.json')
+
+
+def energy_type_of(card: 'Card') -> str:
+    """從能量卡名解析提供的屬性，例: 基本【火】能量 → 火。無法解析回傳 ''。"""
+    if card.category != 'Energy':
+        return ''
+    m = re.search(r'【(.)】', card.name)
+    return m.group(1) if m else ''
+
+
+def needed_energy_types(slot: 'PokemonSlot', override: dict | None = None) -> list[str]:
+    """查該寶可夢所屬進化線主力的能量需求。[] 表示任意能量皆可。
+
+    override: playbook 可傳入 {寶可夢名: [屬性]} 覆寫自動推導值。
+    """
+    override = override or {}
+    for c in slot.cards:
+        if c.name in override:
+            return override[c.name]
+    for c in slot.cards:
+        if c.name in ENERGY_PROFILES:
+            return ENERGY_PROFILES[c.name]
+    return []
+
+
+def pick_energy_for_slot(hand: list, slot: 'PokemonSlot',
+                         override: dict | None = None) -> int | None:
+    """從手牌挑最適合貼給 slot 的能量，回傳 hand index（無能量回傳 None）。
+
+    優先序: 主力仍缺的屬性 > 主力需求屬性 > 任意能量。
+    """
+    energy_idxs = [i for i, c in enumerate(hand) if c.category == 'Energy']
+    if not energy_idxs:
+        return None
+    needed = needed_energy_types(slot, override)
+    if not needed:  # 無色攻擊手，任意能量皆可
+        return energy_idxs[0]
+    attached = [energy_type_of(c) for c in slot.attached_energy]
+    remaining = [t for t in needed if t not in attached]
+    target_types = remaining or needed
+    for i in energy_idxs:
+        if energy_type_of(hand[i]) in target_types:
+            return i
+    return energy_idxs[0]  # 無匹配屬性，退回任意
 
 
 # ═══════════════════════════════════════
@@ -62,8 +126,23 @@ class PokemonSlot:
         return self.top.hp
 
     def can_evolve_to(self, evo_card: Card, skip_stage=False) -> bool:
+        # evolves_from 優先取卡牌自身欄位，否則查全域進化表
+        pre = evo_card.evolves_from or EVOLVES_FROM.get(evo_card.name, '')
+
         if skip_stage:
-            return (self.stage == '基礎' and evo_card.stage == '2階進化')
+            # 神奇糖果: 基礎 → 2階，需確認 2階確實在此基礎的進化線上
+            if not (self.stage == '基礎' and evo_card.stage == '2階進化'):
+                return False
+            if pre:
+                # 往回追一階: 2階的前身(1階)的前身應為當前基礎
+                root = EVOLVES_FROM.get(pre, '')
+                if root:
+                    return root == self.name
+            return True  # 無進化表資料時退回階級判斷
+
+        if pre:
+            return pre == self.name
+        # 無進化表資料時退回階級判斷 (向後相容)
         return (
             (self.stage == '基礎' and evo_card.stage == '1階進化') or
             (self.stage == '1階進化' and evo_card.stage == '2階進化')
@@ -640,7 +719,7 @@ def dict_to_card(entry: dict, category: str = '') -> Card:
         poke_type=entry.get('type', ''),
         is_ace_spec=entry.get('isAceSpec', False),
         regulation_mark=entry.get('regulationMark', ''),
-        evolves_from=entry.get('evolves_from', ''),
+        evolves_from=entry.get('evolves_from', '') or EVOLVES_FROM.get(entry.get('name', ''), ''),
         image_url=entry.get('imageUrl', entry.get('image_url', '')),
     )
 

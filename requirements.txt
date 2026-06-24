@@ -5,3 +5,6 @@ numpy
 stable-baselines3
 sb3-contrib
 torch
+anthropic
+httpx
+beautifulsoup4

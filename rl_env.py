@@ -9,7 +9,10 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-from game_engine import GameState, Card, PokemonSlot, build_deck, setup_game, load_master_db
+from game_engine import (
+    GameState, Card, PokemonSlot, build_deck, setup_game, load_master_db,
+    pick_energy_for_slot,
+)
 from playbook import EffectEngine, PlaybookDecisionMaker, evaluate_board
 
 
@@ -276,15 +279,13 @@ class PTCGSetupEnv(gym.Env):
     def _execute_attach_energy(self, slot_idx: int):
         if self.state.energy_attached:
             return
-        energy_idx = None
-        for i, c in enumerate(self.state.hand):
-            if c.category == 'Energy':
-                energy_idx = i
-                break
-        if energy_idx is None:
-            return
         slots = self.state.all_in_play
         if slot_idx >= len(slots):
+            return
+        # RL 選目標寶可夢，能量屬性由引擎依主力需求智慧挑選
+        override = self.playbook.get('energy_profile')
+        energy_idx = pick_energy_for_slot(self.state.hand, slots[slot_idx], override)
+        if energy_idx is None:
             return
         energy_card = self.state.hand.pop(energy_idx)
         slots[slot_idx].attached_energy.append(energy_card)

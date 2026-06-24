@@ -229,6 +229,41 @@
           ]
         }
       ]
+    },
+
+    "特殊紅牌": {
+      "sub_type": "物品卡",
+      "opponent_effect": true,
+      "description": "對手將手牌洗回牌庫底，抽3張。T1/T2設置模擬中不影響自身狀態。",
+      "effects": []
+    },
+
+    "英雄斗篷": {
+      "sub_type": "寶可夢道具",
+      "not_implemented": true,
+      "description": "附有此卡的寶可夢最大HP+100。引擎不支援寶可夢道具附加。",
+      "effects": []
+    },
+
+    "險惡廢墟": {
+      "sub_type": "競技場卡",
+      "not_implemented": true,
+      "description": "放置基礎寶可夢(惡除外)到備戰區時放2個傷害指示物。引擎不支援被動觸發效果。",
+      "effects": []
+    },
+
+    "阿塞蘿拉的惡作劇": {
+      "sub_type": "支援者卡",
+      "opponent_effect": true,
+      "description": "對手獎賞卡2張以下才可用。我方寶可夢免受ex招式影響。設置模擬中無實際效果。",
+      "effects": []
+    },
+
+    "老大的指令": {
+      "sub_type": "支援者卡",
+      "opponent_effect": true,
+      "description": "選擇對手備戰寶可夢與戰鬥寶可夢互換。設置模擬中不影響自身狀態。",
+      "effects": []
     }
   },
 

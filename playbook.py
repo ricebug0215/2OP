@@ -5,6 +5,7 @@ PTCG Playbook 系統 — 規則式決策 + 模擬執行
 from game_engine import (
     Card, PokemonSlot, GameState, EffectEngine,
     DecisionMaker, matches_filter, build_deck, setup_game, load_master_db,
+    pick_energy_for_slot, needed_energy_types, energy_type_of,
 )
 
 
@@ -173,9 +174,14 @@ class PlaybookDecisionMaker(DecisionMaker):
         target_idx = self._pick_by_priority(
             [s.base.name for s in targets], energy_priority
         )
+        # 依目標主力的能量需求挑選對的能量屬性
+        override = self.pb.get('energy_profile')
+        energy_idx = pick_energy_for_slot(state.hand, targets[target_idx], override)
+        if energy_idx is None:
+            energy_idx = energy_indices[0]
         return {
             'type': 'attach_energy',
-            'hand_idx': energy_indices[0],
+            'hand_idx': energy_idx,
             'target_idx': target_idx,
         }
 
@@ -471,11 +477,21 @@ def evaluate_board(state: GameState, playbook: dict | None = None) -> float:
             score += 40
 
     # ── 能量 ──
+    energy_override = pb.get('energy_profile')
     for slot in state.all_in_play:
         for _ in slot.attached_energy:
             score += 8
-        if slot.base.name in energy_targets or slot.name in energy_targets:
+        is_target = slot.base.name in energy_targets or slot.name in energy_targets
+        if is_target:
             score += len(slot.attached_energy) * 5
+        # 屬性正確獎勵: 主力需求屬性的能量貼對才加分
+        needed = needed_energy_types(slot, energy_override)
+        if needed:
+            for e in slot.attached_energy:
+                if energy_type_of(e) in needed:
+                    score += 6  # 屬性匹配
+                else:
+                    score -= 2  # 貼錯屬性到有明確需求的主力，小幅扣分
 
     # ── 資源轉化 ──
     field_score = score
