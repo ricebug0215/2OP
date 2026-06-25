@@ -284,7 +284,9 @@ class PTCGSetupEnv(gym.Env):
             return
         # RL 選目標寶可夢，能量屬性由引擎依主力需求智慧挑選
         override = self.playbook.get('energy_profile')
-        energy_idx = pick_energy_for_slot(self.state.hand, slots[slot_idx], override)
+        main_attackers = self.playbook.get('main_attacker')
+        energy_idx = pick_energy_for_slot(
+            self.state.hand, slots[slot_idx], override, main_attackers)
         if energy_idx is None:
             return
         energy_card = self.state.hand.pop(energy_idx)
@@ -317,6 +319,8 @@ if __name__ == '__main__':
         'no_bench': ['可達鴨'],
         'play_priority': [],
         'search_priority': ['多龍梅西亞', '土龍弟弟', '多龍奇', '多龍巴魯托ex', '願增猿', '含羞苞', '土龍節節ex'],
+        'supporter_priority': ['莉莉艾的決意', '小剛的發掘', '赤松', '阿塞蘿拉的惡作劇', '老大的指令'],
+        'main_attacker': ['多龍梅西亞'],
         'discard_priority': ['Energy', '特殊紅牌', '老大的指令', '險惡廢墟'],
         'bench_priority': ['多龍梅西亞', '土龍弟弟', '願增猿'],
         'energy_target': ['多龍梅西亞', '多龍奇', '土龍弟弟'],

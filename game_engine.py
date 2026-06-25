@@ -36,15 +36,68 @@ def energy_type_of(card: 'Card') -> str:
     return m.group(1) if m else ''
 
 
-def needed_energy_types(slot: 'PokemonSlot', override: dict | None = None) -> list[str]:
-    """查該寶可夢所屬進化線主力的能量需求。[] 表示任意能量皆可。
+def evolution_line_of(name: str) -> set[str]:
+    """回傳該卡所屬進化線的所有成員(含自己)，用 EVOLVES_FROM 解析。"""
+    # 往上找線根
+    root = name
+    seen = {root}
+    while root in EVOLVES_FROM and EVOLVES_FROM[root] not in seen:
+        root = EVOLVES_FROM[root]
+        seen.add(root)
+    # 往下 BFS
+    children: dict[str, list[str]] = {}
+    for evo, pre in EVOLVES_FROM.items():
+        children.setdefault(pre, []).append(evo)
+    members = {root}
+    queue = [root]
+    while queue:
+        cur = queue.pop()
+        for ch in children.get(cur, []):
+            if ch not in members:
+                members.add(ch)
+                queue.append(ch)
+    return members
 
-    override: playbook 可傳入 {寶可夢名: [屬性]} 覆寫自動推導值。
+
+def expand_main_attackers(names) -> list[str]:
+    """把使用者宣告的主力(可能只點了 ex 或基礎)展開成整條進化線。
+
+    例: ['多龍巴魯托ex'] → ['多龍梅西亞','多龍奇','多龍巴魯托','多龍巴魯托ex']
+    這樣不論場上是哪一階都能被辨識為主力。
+    """
+    expanded = set()
+    for n in names or []:
+        expanded |= evolution_line_of(n)
+    return sorted(expanded)
+
+
+def is_main_attacker(slot: 'PokemonSlot', main_attackers) -> bool:
+    """slot 是否屬於使用者宣告的主力進化線。
+
+    main_attackers 可宣告為線根基礎(多龍梅西亞)或任一階(多龍巴魯托ex)，
+    只要 slot 演化鏈(slot.cards)中任一張命中即視為主力。
+    """
+    if not main_attackers:
+        return False
+    return any(c.name in main_attackers for c in slot.cards)
+
+
+def needed_energy_types(slot: 'PokemonSlot', override: dict | None = None,
+                        main_attackers=None) -> list[str]:
+    """查該寶可夢的能量需求。[] 表示任意能量皆可(無屬性壓力)。
+
+    override:        playbook 可傳入 {寶可夢名: [屬性]} 覆寫自動推導值。
+    main_attackers:  若提供(非 None)，只有宣告的主力才回傳屬性需求，
+                     其餘寶可夢一律視為任意能量([])，避免把能量壓力
+                     錯誤套到非主力(如願增猿、被當後備的土龍)。
+                     None 表示不過濾(沿用舊行為，所有有 profile 的線皆生效)。
     """
     override = override or {}
     for c in slot.cards:
         if c.name in override:
             return override[c.name]
+    if main_attackers is not None and not is_main_attacker(slot, main_attackers):
+        return []
     for c in slot.cards:
         if c.name in ENERGY_PROFILES:
             return ENERGY_PROFILES[c.name]
@@ -52,16 +105,18 @@ def needed_energy_types(slot: 'PokemonSlot', override: dict | None = None) -> li
 
 
 def pick_energy_for_slot(hand: list, slot: 'PokemonSlot',
-                         override: dict | None = None) -> int | None:
+                         override: dict | None = None,
+                         main_attackers=None) -> int | None:
     """從手牌挑最適合貼給 slot 的能量，回傳 hand index（無能量回傳 None）。
 
     優先序: 主力仍缺的屬性 > 主力需求屬性 > 任意能量。
+    非主力寶可夢無屬性需求，直接給任意能量。
     """
     energy_idxs = [i for i, c in enumerate(hand) if c.category == 'Energy']
     if not energy_idxs:
         return None
-    needed = needed_energy_types(slot, override)
-    if not needed:  # 無色攻擊手，任意能量皆可
+    needed = needed_energy_types(slot, override, main_attackers)
+    if not needed:  # 無色攻擊手或非主力，任意能量皆可
         return energy_idxs[0]
     attached = [energy_type_of(c) for c in slot.attached_energy]
     remaining = [t for t in needed if t not in attached]
@@ -342,7 +397,7 @@ class DecisionMaker:
         """從候選列表中選 count 個（回傳 index）"""
         raise NotImplementedError
 
-    def choose_option(self, options: list[str], context: str) -> str:
+    def choose_option(self, options: list[str], state: 'GameState', context: str) -> str:
         """多選一（回傳 option id）"""
         raise NotImplementedError
 
@@ -482,7 +537,7 @@ class EffectEngine:
                     viable_ids.append(opt['id'])
             if not viable_ids:
                 return {'success': True, 'steps': steps}
-            chosen_id = dm.choose_option(viable_ids, f'{card.name} mode')
+            chosen_id = dm.choose_option(viable_ids, state, f'{card.name} mode')
             steps.append(f'選擇模式: {chosen_id}')
             opt_data = next(o for o in effect['options'] if o['id'] == chosen_id)
             for eff in opt_data.get('effects', []):

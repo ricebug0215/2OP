@@ -81,6 +81,13 @@ async def get_cards(name: str = "", category: str = "All", type: str = "All", pa
         "total": total_count
     }
 
+@app.get("/api/evolution-chains")
+async def get_evolution_chains():
+    """回傳 {進化卡: 進化前卡} 對應表，供前端計算進化線連動顯示。"""
+    from game_engine import EVOLVES_FROM
+    return EVOLVES_FROM
+
+
 @app.post("/api/import-deck")
 async def import_deck(request: Request):
     items = await request.json()
@@ -146,6 +153,8 @@ DEFAULT_PLAYBOOK = {
         "多龍梅西亞", "土龍弟弟", "多龍奇", "多龍巴魯托ex",
         "願增猿", "含羞苞", "土龍節節ex",
     ],
+    "supporter_priority": ["莉莉艾的決意", "小剛的發掘", "赤松", "阿塞蘿拉的惡作劇", "老大的指令"],
+    "main_attacker": ["多龍梅西亞"],
     "discard_priority": ["Energy", "特殊紅牌", "老大的指令", "險惡廢墟"],
     "bench_priority": ["多龍梅西亞", "土龍弟弟", "願增猿"],
     "energy_target": ["多龍梅西亞", "多龍奇", "土龍弟弟"],
@@ -186,9 +195,14 @@ async def simulate_t2(request: Request):
     body = await request.json()
     deck_list = body.get("deck", [])
     do_not_play = body.get("do_not_play", [])
+    main_attacker = body.get("main_attacker", [])
     playbook = dict(body.get("playbook", DEFAULT_PLAYBOOK))
     if do_not_play:
         playbook['do_not_play'] = do_not_play
+    if main_attacker:
+        # 使用者可能只點了 ex 或基礎，展開成整條進化線
+        from game_engine import expand_main_attackers
+        playbook['main_attacker'] = expand_main_attackers(main_attacker)
     runner = SimulationRunner(deck_list, playbook)
     key = _deck_key(deck_list)
 

@@ -1,7 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, Zap, BookOpen, X, ChevronDown, ChevronUp, Eye, Ban } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Minus, Trash2, Zap, BookOpen, X, ChevronDown, ChevronUp, Eye, Ban, Swords } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://placehold.co/240x336/1e293b/64748b?text=No+Image';
+
+// 用 {進化卡: 進化前卡} 表計算某張卡所屬進化線的所有成員
+function lineMembersOf(name, evoChains, childrenMap) {
+  let root = name;
+  const seen = new Set([root]);
+  while (evoChains[root] && !seen.has(evoChains[root])) {
+    root = evoChains[root];
+    seen.add(root);
+  }
+  const members = new Set([root]);
+  const queue = [root];
+  while (queue.length) {
+    const cur = queue.pop();
+    for (const ch of (childrenMap[cur] || [])) {
+      if (!members.has(ch)) { members.add(ch); queue.push(ch); }
+    }
+  }
+  return members;
+}
 
 const FILTER_CONFIG = {
   Pokemon: [
@@ -203,6 +222,26 @@ export default function App() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingCards, setIsLoadingCards] = useState(false);
+  const [evoChains, setEvoChains] = useState({});
+
+  // 進化線 children 表 + 目前所有主力標記展開後的進化線成員集合
+  const evoChildren = useMemo(() => {
+    const children = {};
+    for (const [evo, pre] of Object.entries(evoChains)) {
+      (children[pre] ||= []).push(evo);
+    }
+    return children;
+  }, [evoChains]);
+
+  const mainLineNames = useMemo(() => {
+    const s = new Set();
+    for (const c of deck) {
+      if (c.mainAttacker) {
+        for (const m of lineMembersOf(c.name, evoChains, evoChildren)) s.add(m);
+      }
+    }
+    return s;
+  }, [deck, evoChains, evoChildren]);
 
   const deckCount = deck.reduce((sum, c) => sum + (c.count || 1), 0);
   const pokemonCount = deck.filter(c => c.category === 'Pokemon').reduce((sum, c) => sum + c.count, 0);
@@ -211,6 +250,13 @@ export default function App() {
 
   useEffect(() => { setSubFilter('All'); }, [filter]);
   useEffect(() => { setPage(1); }, [searchTerm, filter, subFilter]);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/evolution-chains')
+      .then(r => r.json())
+      .then(setEvoChains)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchCards = async () => {
@@ -262,6 +308,13 @@ export default function App() {
     }
   };
 
+  // 主力以「整條進化線」為單位切換：點任一張 → 全線一起標記/取消
+  const toggleMainAttacker = (card) => {
+    const line = lineMembersOf(card.name, evoChains, evoChildren);
+    const lineOn = deck.some(d => d.mainAttacker && line.has(d.name));
+    setDeck(deck.map(d => line.has(d.name) ? { ...d, mainAttacker: !lineOn } : d));
+  };
+
   const removeFromDeck = (cardName) => {
     const cardInDeck = deck.find(c => c.name === cardName);
     if (!cardInDeck) return;
@@ -279,10 +332,11 @@ export default function App() {
     try {
       const deckList = deck.map(c => ({ name: c.name, count: c.count, category: c.category, sub_type: c.subCategory || '' }));
       const doNotPlay = deck.filter(c => c.excluded).map(c => c.name);
+      const mainAttacker = deck.filter(c => c.mainAttacker).map(c => c.name);
       const resp = await fetch('http://127.0.0.1:8000/api/simulate-t2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deck: deckList, do_not_play: doNotPlay })
+        body: JSON.stringify({ deck: deckList, do_not_play: doNotPlay, main_attacker: mainAttacker })
       });
       const result = await resp.json();
       setSimulationResult(result);
@@ -414,10 +468,21 @@ export default function App() {
               <p className="text-sm font-bold">牌組是空的</p>
             </div>
           ) : (
-            deck.map(c => (
-              <div key={c.name} className={`flex items-center justify-between p-3 rounded-xl border group transition-all ${c.excluded ? 'bg-red-950/30 border-red-500/20' : 'bg-[#1e293b] border-white/5 hover:bg-[#253248]'}`}>
-                <span className={`text-sm font-bold truncate pr-2 ${c.excluded ? 'text-gray-500 line-through' : c.isAceSpec ? 'text-pink-400' : 'text-gray-200'}`}>{c.name}</span>
+            deck.map(c => {
+              const isMain = !c.excluded && (c.mainAttacker || mainLineNames.has(c.name));
+              return (
+              <div key={c.name} className={`flex items-center justify-between p-3 rounded-xl border group transition-all ${c.excluded ? 'bg-red-950/30 border-red-500/20' : isMain ? 'bg-amber-950/30 border-amber-500/30' : 'bg-[#1e293b] border-white/5 hover:bg-[#253248]'}`}>
+                <span className={`text-sm font-bold truncate pr-2 ${c.excluded ? 'text-gray-500 line-through' : isMain ? 'text-amber-300' : c.isAceSpec ? 'text-pink-400' : 'text-gray-200'}`}>{c.name}</span>
                 <div className="flex items-center gap-2">
+                  {c.category === 'Pokemon' && (
+                    <button
+                      onClick={() => toggleMainAttacker(c)}
+                      className={`p-1.5 transition-colors ${isMain ? 'text-amber-400 hover:text-amber-300' : 'text-gray-600 hover:text-amber-400'}`}
+                      title={isMain ? '取消主力（整條進化線）' : '標記為主力進化線（決定填能屬性與計分依據）'}
+                    >
+                      <Swords className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setDeck(deck.map(d => d.name === c.name ? { ...d, excluded: !d.excluded } : d))}
                     className={`p-1.5 transition-colors ${c.excluded ? 'text-red-400 hover:text-red-300' : 'text-gray-600 hover:text-red-400'}`}
@@ -435,7 +500,8 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 

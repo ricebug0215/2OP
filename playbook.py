@@ -176,7 +176,9 @@ class PlaybookDecisionMaker(DecisionMaker):
         )
         # 依目標主力的能量需求挑選對的能量屬性
         override = self.pb.get('energy_profile')
-        energy_idx = pick_energy_for_slot(state.hand, targets[target_idx], override)
+        main_attackers = self.pb.get('main_attacker')
+        energy_idx = pick_energy_for_slot(
+            state.hand, targets[target_idx], override, main_attackers)
         if energy_idx is None:
             energy_idx = energy_indices[0]
         return {
@@ -208,7 +210,10 @@ class PlaybookDecisionMaker(DecisionMaker):
         do_not_play = set(self.pb.get('do_not_play', []))
 
         if 'search' in context or 'look_top' in context or 'recover' in context:
-            priority = self.pb.get('search_priority', [])
+            # 寶可夢用 search_priority，支援者接 supporter_priority，能量接 energy_target
+            priority = (self.pb.get('search_priority', [])
+                        + self.pb.get('supporter_priority', [])
+                        + self.pb.get('energy_target', []))
             if do_not_play:
                 allowed = [i for i, c in enumerate(candidates)
                            if (c.name if isinstance(c, Card) else c) not in do_not_play]
@@ -230,7 +235,16 @@ class PlaybookDecisionMaker(DecisionMaker):
 
         return list(range(count))
 
-    def choose_option(self, options: list[str], context: str) -> str:
+    def choose_option(self, options: list[str], state: GameState, context: str) -> str:
+        # 小剛的發掘：預設拿2張基礎鋪場；地基穩了(備戰基礎≥3 且 主力基礎在場)才改拿進化
+        if '小剛的發掘' in context and 'one_evolution' in options:
+            main_basics = set(self.pb.get('evolution_lines', {}).keys())
+            bench_basics = sum(1 for s in state.bench if s.stage == '基礎')
+            has_main_basic = any(s.base.name in main_basics for s in state.all_in_play)
+            if bench_basics >= 3 and has_main_basic:
+                return 'one_evolution'
+            if 'two_basics' in options:
+                return 'two_basics'
         return options[0]
 
     def choose_bench_slot(self, bench: list[PokemonSlot], context: str) -> int:
@@ -478,20 +492,21 @@ def evaluate_board(state: GameState, playbook: dict | None = None) -> float:
 
     # ── 能量 ──
     energy_override = pb.get('energy_profile')
+    main_attackers = pb.get('main_attacker')
     for slot in state.all_in_play:
         for _ in slot.attached_energy:
             score += 8
         is_target = slot.base.name in energy_targets or slot.name in energy_targets
         if is_target:
             score += len(slot.attached_energy) * 5
-        # 屬性正確獎勵: 主力需求屬性的能量貼對才加分
-        needed = needed_energy_types(slot, energy_override)
+        # 屬性正確獎勵: 只對宣告的主力生效，避免錯誤獎勵非主力(願增猿/後備土龍)
+        needed = needed_energy_types(slot, energy_override, main_attackers)
         if needed:
             for e in slot.attached_energy:
                 if energy_type_of(e) in needed:
                     score += 6  # 屬性匹配
                 else:
-                    score -= 2  # 貼錯屬性到有明確需求的主力，小幅扣分
+                    score -= 2  # 貼錯屬性到主力，小幅扣分
 
     # ── 資源轉化 ──
     field_score = score
@@ -566,6 +581,8 @@ if __name__ == '__main__':
             "多龍梅西亞", "土龍弟弟", "多龍奇", "多龍巴魯托ex",
             "願增猿", "含羞苞", "土龍節節ex",
         ],
+        "supporter_priority": ["莉莉艾的決意", "小剛的發掘", "赤松", "阿塞蘿拉的惡作劇", "老大的指令"],
+        "main_attacker": ["多龍梅西亞"],
         "discard_priority": ["Energy", "特殊紅牌", "老大的指令", "險惡廢墟"],
         "bench_priority": ["多龍梅西亞", "土龍弟弟", "願增猿"],
         "energy_target": ["多龍梅西亞", "多龍奇", "土龍弟弟"],

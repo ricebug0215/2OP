@@ -40,6 +40,8 @@ RL_PB = {
     'no_bench': ['可達鴨'],
     'play_priority': [],
     'search_priority': ['多龍梅西亞', '土龍弟弟', '多龍奇', '多龍巴魯托ex', '願增猿', '含羞苞', '土龍節節ex'],
+    'supporter_priority': ['莉莉艾的決意', '小剛的發掘', '赤松', '阿塞蘿拉的惡作劇', '老大的指令'],
+    'main_attacker': ['多龍梅西亞'],
     'discard_priority': ['Energy', '特殊紅牌', '老大的指令', '險惡廢墟'],
     'bench_priority': ['多龍梅西亞', '土龍弟弟', '願增猿'],
     'energy_target': ['多龍梅西亞', '多龍奇', '土龍弟弟'],
