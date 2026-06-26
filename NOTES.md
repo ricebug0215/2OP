@@ -66,6 +66,13 @@ PTCG T1/T2 展開模擬器。RL（MaskablePPO）+ playbook heuristic 混合架�
       (洗掉好牌又不賺)；手牌 ≤7 仍照打(抽到 8 仍是淨正、挖展開牌)。
     影響：demo 500–1000 局 avg ~149–155(基準 ~156，B/D 的小幅降分是擋掉負期望/過量play
     的合理代價)。A/C 幾乎中性。B/C/A 也動到 RL 子決策 → 併入既有重訓需求。
+11. 牌組面板「兩個土龍節節ex」bug(2026-06-25)：根因在 `/api/import-deck` 用**子字串比對**
+    解析卡表，而「土龍節節」是「土龍節節ex」的子字串、且 ex 版在 MASTER_DATA 較前 →
+    項目「土龍節節」被誤判成「土龍節節ex」，牌組出現兩筆同名 entry；前端 ban/主力/刪除
+    皆以 `c.name` 操作 → 兩筆連動。修法：import-deck 改**精確比對優先、找不到才退回子字串**。
+    （曾誤判為瀏覽器顯示問題、在 `get_cards` 加同名去重 → 已回退，那不是病灶。）
+    保留的真 bug 修正：`App.jsx` `key={card.id}`(id 欄位不存在→全 undefined)改為
+    `key={card.imageUrl||card.name}`。純前後端表示/解析層，不需重訓。
 
 ## 關鍵決策（為什麼這樣做）
 

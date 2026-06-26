@@ -75,7 +75,7 @@ async def get_cards(name: str = "", category: str = "All", type: str = "All", pa
     # 分頁邏輯
     total_count = len(results)
     skip = (page - 1) * limit
-    
+
     return {
         "items": results[skip : skip + limit],
         "total": total_count
@@ -95,7 +95,14 @@ async def import_deck(request: Request):
     not_found = []
     
     for item in items:
-        match = next((c for c in MASTER_DATA if item['name'].lower() in str(c.get('name', '')).lower()), None)
+        target = str(item['name'])
+        # 先精確比對(卡表用完整卡名)；找不到才退回子字串模糊比對。
+        # 不能只用子字串：「土龍節節」是「土龍節節ex」的子字串，
+        # 且 ex 版在 MASTER_DATA 較前 → 會把一般版誤判成 ex 版(兩筆同名 entry、ban 連動)。
+        match = next((c for c in MASTER_DATA if str(c.get('name', '')) == target), None)
+        if not match:
+            match = next((c for c in MASTER_DATA
+                          if target.lower() in str(c.get('name', '')).lower()), None)
         if match:
             card_copy = match.copy()
             card_copy['count'] = item.get('count', 1)

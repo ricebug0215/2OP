@@ -416,7 +416,7 @@ export default function App() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 pb-6">
               {cards.map(card => (
-                <div key={card.id} className="cursor-pointer hover:-translate-y-1 transition-transform group" onClick={() => addToDeck(card)}>
+                <div key={card.imageUrl || card.name} className="cursor-pointer hover:-translate-y-1 transition-transform group" onClick={() => addToDeck(card)}>
                   <div className={`relative rounded-xl overflow-hidden ${card.isAceSpec ? 'ring-2 ring-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.4)]' : ''}`}>
                     <img src={card.image || FALLBACK_IMAGE} className="w-full h-auto shadow-lg border border-white/10" alt={card.name} />
                   </div>
