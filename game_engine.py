@@ -104,19 +104,47 @@ def needed_energy_types(slot: 'PokemonSlot', override: dict | None = None,
     return []
 
 
+def attachable_energy_types(main_attackers=None, override: dict | None = None) -> set[str]:
+    """牌組「可貼附」的能量屬性 = 所有宣告主力進化線需要的屬性聯集。
+
+    用途: 區分「填能用能量」與「戰術棄牌用能量」。例如多龍套主力吃火/超，
+    牌裡的惡能量是給高級球等代價棄掉的，不該被貼到寶可夢身上。
+
+    回傳空集合表示不限制(未宣告主力，或主力吃無色任意能量) → 沿用舊行為。
+    """
+    if not main_attackers:
+        return set()
+    override = override or {}
+    types: set[str] = set()
+    for name in main_attackers:
+        if name in override:
+            types.update(override[name])
+        elif name in ENERGY_PROFILES:
+            types.update(ENERGY_PROFILES[name])
+    return types
+
+
 def pick_energy_for_slot(hand: list, slot: 'PokemonSlot',
                          override: dict | None = None,
                          main_attackers=None) -> int | None:
-    """從手牌挑最適合貼給 slot 的能量，回傳 hand index（無能量回傳 None）。
+    """從手牌挑最適合貼給 slot 的能量，回傳 hand index（無可貼能量回傳 None）。
 
-    優先序: 主力仍缺的屬性 > 主力需求屬性 > 任意能量。
-    非主力寶可夢無屬性需求，直接給任意能量。
+    優先序: 主力仍缺的屬性 > 主力需求屬性 > 任意可貼附能量。
+    先以牌組可貼附屬性過濾，牌組用不到的能量(如戰術棄牌的惡能量)一律不貼。
+    非主力寶可夢無屬性需求，給任一張可貼附能量即可。
     """
     energy_idxs = [i for i, c in enumerate(hand) if c.category == 'Energy']
     if not energy_idxs:
         return None
+    # 牌組可貼附屬性: 非空時排除牌組用不到的能量(留作棄牌資源)
+    deck_types = attachable_energy_types(main_attackers, override)
+    if deck_types:
+        energy_idxs = [i for i in energy_idxs
+                       if energy_type_of(hand[i]) in deck_types]
+        if not energy_idxs:
+            return None  # 手上只有非貼附用能量，不貼
     needed = needed_energy_types(slot, override, main_attackers)
-    if not needed:  # 無色攻擊手或非主力，任意能量皆可
+    if not needed:  # 無色攻擊手或非主力，任一可貼附能量皆可
         return energy_idxs[0]
     attached = [energy_type_of(c) for c in slot.attached_energy]
     remaining = [t for t in needed if t not in attached]
@@ -124,7 +152,7 @@ def pick_energy_for_slot(hand: list, slot: 'PokemonSlot',
     for i in energy_idxs:
         if energy_type_of(hand[i]) in target_types:
             return i
-    return energy_idxs[0]  # 無匹配屬性，退回任意
+    return energy_idxs[0]  # 無匹配屬性但屬於可貼附範圍，退回任意
 
 
 # ═══════════════════════════════════════
@@ -405,6 +433,12 @@ class DecisionMaker:
         """選擇備戰區的一隻"""
         raise NotImplementedError
 
+    def choose_attach_slot(self, slots: list[PokemonSlot], energy_card: Card,
+                           context: str) -> int:
+        """選擇要把某張能量貼給場上哪一隻(預設沿用 choose_bench_slot)。
+        覆寫此方法可依能量屬性挑出真正需要它的主力。"""
+        return self.choose_bench_slot(slots, context)
+
     def choose_discard(self, hand: list[Card], count: int, context: str) -> list[int]:
         """選擇從手牌丟棄哪些牌（回傳 hand index）"""
         raise NotImplementedError
@@ -580,7 +614,7 @@ class EffectEngine:
                 pick_count = min(pick_count, state.bench_open)
             chosen_indices = dm.choose_targets(
                 [c for _, c in candidates], pick_count,
-                f'{card_name} search'
+                f'{card_name} search {dest}'
             )
             deck_indices = [candidates[i][0] for i in chosen_indices]
             picked = state.remove_from_deck(deck_indices)
@@ -593,8 +627,8 @@ class EffectEngine:
                 for p in picked:
                     slots = state.all_in_play
                     if slots:
-                        target_idx = dm.choose_bench_slot(
-                            slots, f'{card_name} attach energy')
+                        target_idx = dm.choose_attach_slot(
+                            slots, p, f'{card_name} attach energy')
                         slots[target_idx].attached_energy.append(p)
                         dest_label = f'貼在 {slots[target_idx].name} 身上'
             state.shuffle_deck()

@@ -11,7 +11,7 @@ import numpy as np
 
 from game_engine import (
     GameState, Card, PokemonSlot, build_deck, setup_game, load_master_db,
-    pick_energy_for_slot,
+    pick_energy_for_slot, attachable_energy_types, energy_type_of,
 )
 from playbook import EffectEngine, PlaybookDecisionMaker, evaluate_board
 
@@ -84,6 +84,7 @@ class PTCGSetupEnv(gym.Env):
             do_not_play=set(self.playbook.get('do_not_play', [])),
         )
         self.dm = PlaybookDecisionMaker(self.playbook, self.effect_engine)
+        self.dm.bind_state(self.state)
 
         self.current_turn = 1
         self.state.start_turn()
@@ -206,9 +207,16 @@ class PTCGSetupEnv(gym.Env):
                     mask[1 + idx] = 1
                     hand_names_playable.add(name)
 
-        # 貼能量
+        # 貼能量 — 只在手上有「可貼附」能量時開放(牌組用不到的能量如惡能量不算)
         if not self.state.energy_attached:
-            has_energy = any(c.category == 'Energy' for c in self.state.hand)
+            override = self.playbook.get('energy_profile')
+            main_attackers = self.playbook.get('main_attacker')
+            deck_types = attachable_energy_types(main_attackers, override)
+            has_energy = any(
+                c.category == 'Energy'
+                and (not deck_types or energy_type_of(c) in deck_types)
+                for c in self.state.hand
+            )
             if has_energy:
                 slots = self.state.all_in_play
                 for i in range(len(slots)):

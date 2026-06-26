@@ -6,6 +6,7 @@ from game_engine import (
     Card, PokemonSlot, GameState, EffectEngine,
     DecisionMaker, matches_filter, build_deck, setup_game, load_master_db,
     pick_energy_for_slot, needed_energy_types, energy_type_of,
+    ENERGY_PROFILES, attachable_energy_types,
 )
 
 
@@ -38,6 +39,11 @@ class PlaybookDecisionMaker(DecisionMaker):
     def __init__(self, playbook: dict, effect_engine: EffectEngine):
         self.pb = playbook
         self.engine = effect_engine
+        self._state: GameState | None = None  # 供子決策(如搜尋避免拿重複牌)讀場面
+
+    def bind_state(self, state: GameState) -> None:
+        """綁定當前對局狀態，讓 choose_targets 等子決策能看場上/手牌。"""
+        self._state = state
 
     # ── 主決策：下一步打什麼 ──
 
@@ -91,6 +97,10 @@ class PlaybookDecisionMaker(DecisionMaker):
                 continue
 
             idx, card = hand_matches[0]
+            if not self._cost_affordable(card, idx, state):
+                continue
+            if not self._shuffle_draw_worth(card, state):
+                continue
             if self.engine.can_play(card, state):
                 return {'type': 'play_card', 'hand_idx': idx}
 
@@ -180,7 +190,7 @@ class PlaybookDecisionMaker(DecisionMaker):
         energy_idx = pick_energy_for_slot(
             state.hand, targets[target_idx], override, main_attackers)
         if energy_idx is None:
-            energy_idx = energy_indices[0]
+            return None  # 手上只有非貼附用能量(如惡能量)，本回合不填能
         return {
             'type': 'attach_energy',
             'hand_idx': energy_idx,
@@ -210,18 +220,21 @@ class PlaybookDecisionMaker(DecisionMaker):
         do_not_play = set(self.pb.get('do_not_play', []))
 
         if 'search' in context or 'look_top' in context or 'recover' in context:
+            # 能量候選: 依牌組可貼附/主力需求屬性挑，避免搜到戰術棄牌能量(如惡能量)
+            if all(isinstance(c, Card) and c.category == 'Energy' for c in candidates):
+                return self._pick_energy_targets(
+                    candidates, count, for_attach='attach' in context)
             # 寶可夢用 search_priority，支援者接 supporter_priority，能量接 energy_target
             priority = (self.pb.get('search_priority', [])
                         + self.pb.get('supporter_priority', [])
                         + self.pb.get('energy_target', []))
-            if do_not_play:
-                allowed = [i for i, c in enumerate(candidates)
-                           if (c.name if isinstance(c, Card) else c) not in do_not_play]
-                if allowed:
-                    filtered = [candidates[i] for i in allowed]
-                    picks = self._pick_multiple_by_priority(filtered, count, priority)
-                    return [allowed[p] for p in picks]
-            return self._pick_multiple_by_priority(candidates, count, priority)
+            allowed = [i for i, c in enumerate(candidates)
+                       if (c.name if isinstance(c, Card) else c) not in do_not_play]
+            if not allowed:
+                allowed = list(range(len(candidates)))
+            picks = self._rank_search_candidates(
+                [candidates[i] for i in allowed], count, priority)
+            return [allowed[p] for p in picks]
 
         if 'evolve' in context:
             evo_lines = self.pb.get('evolution_lines', {})
@@ -245,6 +258,20 @@ class PlaybookDecisionMaker(DecisionMaker):
                 return 'one_evolution'
             if 'two_basics' in options:
                 return 'two_basics'
+        # 夜間擔架：棄牌區有主力/進化素材就回收寶可夢；否則若棄了夠多充能能量就循環能量
+        if '夜間擔架' in context:
+            main = set(self.pb.get('main_attacker', []))
+            if 'recover_pokemon' in options and any(
+                    c.category == 'Pokemon' and (c.name in main or c.stage != '基礎')
+                    for c in state.discard):
+                return 'recover_pokemon'
+            needed = self._main_needed_types()
+            if 'recover_energy' in options and needed and sum(
+                    1 for c in state.discard
+                    if c.category == 'Energy' and energy_type_of(c) in needed) >= 3:
+                return 'recover_energy'
+            if 'recover_pokemon' in options:
+                return 'recover_pokemon'
         return options[0]
 
     def choose_bench_slot(self, bench: list[PokemonSlot], context: str) -> int:
@@ -252,8 +279,70 @@ class PlaybookDecisionMaker(DecisionMaker):
         names = [s.base.name for s in bench]
         return self._pick_by_priority(names, bench_priority)
 
+    def _board_count(self, name: str) -> int:
+        """場上(各格進化鏈)+ 手牌已持有同名卡的數量。"""
+        st = self._state
+        if st is None:
+            return 0
+        n = sum(1 for s in st.all_in_play for c in s.cards if c.name == name)
+        n += sum(1 for c in st.hand if c.name == name)
+        return n
+
+    def _rank_search_candidates(self, candidates: list, count: int,
+                                priority: list[str]) -> list[int]:
+        """搜尋排序: 已持有≥2 張的寶可夢降一級(避免再拿重複)，
+        再依 search/supporter priority，最後才比已持有數(少者優先)。"""
+        def key(i):
+            c = candidates[i]
+            name = c.name if isinstance(c, Card) else c
+            rank = next((r for r, p in enumerate(priority) if name == p), 9999)
+            is_poke = isinstance(c, Card) and c.category == 'Pokemon'
+            already = self._board_count(name) if is_poke else 0
+            tier = 1 if already >= 3 else 0  # 同名已有3張才降級(避免拿第4張)
+            return (tier, rank, already)
+        order = sorted(range(len(candidates)), key=key)
+        return order[:count]
+
+    def _pick_energy_targets(self, candidates: list, count: int,
+                             for_attach: bool) -> list[int]:
+        """挑能量(搜尋用)。可貼附屬性優先；要貼附時絕不挑牌組用不到的能量。"""
+        override = self.pb.get('energy_profile')
+        main_attackers = self.pb.get('main_attacker')
+        deck_types = attachable_energy_types(main_attackers, override)
+        if not deck_types:  # 未宣告主力 → 不限制
+            return list(range(min(count, len(candidates))))
+        attachable = [i for i, c in enumerate(candidates)
+                      if energy_type_of(c) in deck_types]
+        if for_attach:
+            # 貼附用: 只從可貼附屬性挑，沒有就不挑(寧可不貼也不貼惡能量)
+            return attachable[:count]
+        # 搜到手牌: 可貼附屬性優先，不足再補其他
+        others = [i for i in range(len(candidates)) if i not in attachable]
+        return (attachable + others)[:count]
+
+    def choose_attach_slot(self, slots: list[PokemonSlot], energy_card: Card,
+                           context: str) -> int:
+        """把能量貼給「需要這個屬性且還沒貼到」的主力，否則退回 bench_priority。"""
+        etype = energy_type_of(energy_card)
+        override = self.pb.get('energy_profile')
+        main_attackers = self.pb.get('main_attacker')
+        fallback = None
+        for i, s in enumerate(slots):
+            needed = needed_energy_types(s, override, main_attackers)
+            if etype and etype in needed:
+                attached = [energy_type_of(e) for e in s.attached_energy]
+                if etype not in attached:
+                    return i  # 主力還缺這屬性，最優先
+                if fallback is None:
+                    fallback = i
+        if fallback is not None:
+            return fallback
+        return self.choose_bench_slot(slots, context)
+
     def choose_discard(self, hand: list[Card], count: int, context: str) -> list[int]:
         discard_priority = self.pb.get('discard_priority', [])
+        needed_types = self._main_needed_types()
+        protected = self._protected_names()
         scored = []
         for i, card in enumerate(hand):
             score = 1000
@@ -261,9 +350,58 @@ class PlaybookDecisionMaker(DecisionMaker):
                 if dp == card.category or dp == card.name:
                     score = rank
                     break
+            # 主力充能用的能量(火/超)是寶貴資源，保護到只比關鍵牌早丟；
+            # 非需求能量(草/惡)維持 discard_priority 的低分(最先丟)
+            if (card.category == 'Energy' and needed_types
+                    and energy_type_of(card) in needed_types):
+                score = 5000
+            # 關鍵牌(抽牌支援者/主力)留到最後才丟
+            if card.name in protected:
+                score = 100000
             scored.append((score, i))
         scored.sort()
         return [i for _, i in scored[:count]]
+
+    def _protected_names(self) -> set[str]:
+        """不該被當成本棄掉的關鍵牌: 抽牌/搜尋支援者 + 宣告主力進化線。"""
+        names = set(self.pb.get('supporter_priority', []))
+        names |= set(self.pb.get('main_attacker', []))
+        return names
+
+    def _cost_affordable(self, card: Card, play_idx: int, state: GameState) -> bool:
+        """棄牌代價是否能用「非關鍵牌」支付。不行就別打(例如高級球不該丟掉
+        莉莉艾/小剛/主力)，這也自然抑制同回合硬連打第二張高級球。"""
+        effect = self.engine.get_effect(card.name)
+        cost = (effect or {}).get('cost')
+        if not cost or cost.get('action') != 'discard_from_hand':
+            return True
+        count = cost.get('count', 0)
+        protected = self._protected_names()
+        fodder = sum(1 for i, c in enumerate(state.hand)
+                     if i != play_idx and c.name not in protected)
+        return fodder >= count
+
+    def _shuffle_draw_worth(self, card: Card, state: GameState) -> bool:
+        """洗手牌抽牌(如莉莉艾的決意)只在淨賺夠多時打，手牌已多就別洗掉好牌。"""
+        effect = self.engine.get_effect(card.name)
+        for eff in (effect or {}).get('effects', []):
+            if eff.get('action') == 'shuffle_hand_draw':
+                n = eff.get('count')
+                if isinstance(n, int):
+                    # 打完最終手牌 = n 張；手牌 ≥ n 時等於不賺還洗掉好牌，不打
+                    return len(state.hand) <= n - 1
+        return True
+
+    def _main_needed_types(self) -> set[str]:
+        """宣告主力進化線所需的能量屬性聯集，供棄牌時保留有用能量。"""
+        override = self.pb.get('energy_profile') or {}
+        types: set[str] = set()
+        for name in self.pb.get('main_attacker') or []:
+            if name in override:
+                types.update(override[name])
+            elif name in ENERGY_PROFILES:
+                types.update(ENERGY_PROFILES[name])
+        return types
 
     # ── 工具方法 ──
 
@@ -316,6 +454,7 @@ class SimulationRunner:
             do_not_play=set(self.playbook.get('do_not_play', [])),
         )
         dm = PlaybookDecisionMaker(self.playbook, self.effect_engine)
+        dm.bind_state(state)
 
         log = []
         setup_info = {
